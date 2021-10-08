@@ -1,0 +1,8 @@
+<div class="d-flex align-items-center bg-white border rounded px-2 py-1">
+  <div class="badge bg-{{ type }} me-1" *ngFor="let item of tags; index as i">
+    <span class="me-1">{{item}}</span>
+    <button type="button" class="btn-close btn-close-white" aria-label="Close" (click)="remove(item, i)"></button>
+  </div>
+  <input class="tag-input-txt w-100" type="text" (click)="click($event)" (focusout)="click($event)"
+         (keyup)="append($event)" [(ngModel)]="txtModel">
+</div>

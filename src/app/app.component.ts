@@ -7,4 +7,7 @@ import { Component } from '@angular/core';
 })
 export class AppComponent {
   title = 'bs5-components-sample';
+  tagList = ["initial", "values", "here"];
+  typeList = ["primary", "success", "info", "warning", "danger"];
+  selectedType = this.typeList[0]
 }

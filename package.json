@@ -1,6 +1,19 @@
 {
   "name": "bs5-components-sample",
-  "version": "0.0.0",
+  "version": "0.0.1",
+  "homepage": "https://github.com/brane08/bs5-components-sample",
+  "bugs": "https://github.com/brane08/bs5-components-sample/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brane08/bs5-components-sample.git"
+  },
+  "private": true,
+  "author": {
+    "name": "Bhushan Rane",
+    "email": "ekpravasi@gmail.com"
+  },
+  "description": "This project contains bootstrap 5 angular component samples, helpful for quick reference",
+  "license": "MIT",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -8,7 +21,6 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
-  "private": true,
   "dependencies": {
     "@angular/animations": "~12.2.0",
     "@angular/common": "~12.2.0",
@@ -18,6 +30,7 @@
     "@angular/platform-browser": "~12.2.0",
     "@angular/platform-browser-dynamic": "~12.2.0",
     "@angular/router": "~12.2.0",
+    "bootstrap": "~5.1.0",
     "rxjs": "~6.6.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.11.4"

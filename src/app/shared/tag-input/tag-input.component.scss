@@ -1,0 +1,10 @@
+$padding-x: .25rem;
+$padding-y: .50rem;
+
+.tag-input-txt {
+  border: 0;
+
+  &:focus {
+    outline: none;
+  }
+}
