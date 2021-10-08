@@ -13,6 +13,8 @@ export class TagInputComponent implements OnInit {
   tagsChange = new EventEmitter<Array<string>>();
   @Input("allow-space")
   allowSpace = true;
+  @Input("editor")
+  editor = true;
   @Input()
   type: string = "secondary";
   txtModel = "";
