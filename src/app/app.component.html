@@ -156,6 +156,28 @@
   </section>
 
   <section class="card mb-4">
+    <h2 class="card-header h5">Signal Forms <span class="badge text-bg-warning fw-normal">experimental</span></h2>
+    <div class="card-body">
+      <div class="mb-3">
+        <label class="form-label" for="sf-skills">Skills</label>
+        <app-tag-input inputId="sf-skills" [formField]="profile.skills" [type]="variant()" />
+        @if (profile.skills().invalid() && profile.skills().touched()) {
+          <div class="invalid-feedback d-block">Add at least one skill.</div>
+        }
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="sf-langs">Languages</label>
+        <app-multi-select labelForId="sf-langs" [formField]="profile.languages" [items]="languages" bindLabel="name"
+                          bindValue="id" [type]="variant()" />
+        @if (profile.languages().invalid() && profile.languages().touched()) {
+          <div class="invalid-feedback d-block">Pick at least one language.</div>
+        }
+      </div>
+      <div class="form-text">Model: {{ profileModel() | json }}</div>
+    </div>
+  </section>
+
+  <section class="card mb-4">
     <h2 class="card-header h5">Toast service</h2>
     <div class="card-body">
       <div class="row g-3 mb-3">

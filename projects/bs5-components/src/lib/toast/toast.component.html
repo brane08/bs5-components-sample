@@ -6,10 +6,10 @@
       <strong [class]="config.titleClass">{{ pkg.title }}</strong>
     }
     @if (duplicates()) {
-      <span class="badge text-bg-secondary ms-2" aria-label="Repeated">{{ duplicates() + 1 }}</span>
+      <span class="badge text-bg-secondary ms-2" [attr.aria-label]="config.duplicatesLabel">{{ duplicates() + 1 }}</span>
     }
     @if (config.closeButton) {
-      <button type="button" class="btn-close ms-2" aria-label="Close" (click)="close($event)"></button>
+      <button type="button" class="btn-close ms-2" [attr.aria-label]="config.closeLabel" (click)="close($event)"></button>
     }
   </div>
 }
@@ -21,10 +21,10 @@
   }
   @if (!pkg.title) {
     @if (duplicates()) {
-      <span class="badge text-bg-secondary my-auto" aria-label="Repeated">{{ duplicates() + 1 }}</span>
+      <span class="badge text-bg-secondary my-auto" [attr.aria-label]="config.duplicatesLabel">{{ duplicates() + 1 }}</span>
     }
     @if (config.closeButton) {
-      <button type="button" class="btn-close me-2 m-auto" aria-label="Close"
+      <button type="button" class="btn-close me-2 m-auto" [attr.aria-label]="config.closeLabel"
               [attr.data-bs-theme]="bodyCloseTheme" (click)="close($event)"></button>
     }
   }
@@ -32,7 +32,8 @@
 @if (config.progressBar && ref.hasTimer()) {
   <!-- Re-created on every timer cycle so the CSS animation restarts. -->
   @for (cycle of [ref.timerCycle()]; track cycle) {
-    <div class="progress rounded-0 bg-transparent" style="height: 4px" role="progressbar" aria-label="Time remaining">
+    <!-- Decorative: the remaining time is not announced. -->
+    <div class="progress rounded-0 bg-transparent" style="height: 4px" aria-hidden="true">
       <div class="progress-bar bg-black bg-opacity-25" [class]="'toast-progress-' + config.progressAnimation"
            [style.animation-duration.ms]="ref.timerDuration()"></div>
     </div>

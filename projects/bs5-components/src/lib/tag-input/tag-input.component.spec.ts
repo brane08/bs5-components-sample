@@ -1,9 +1,16 @@
+import type { Mock } from 'vitest';
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormControl,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { EMPTY, Subject, of, throwError } from 'rxjs';
 import { TagDragService } from './tag-drag.service';
+import { provideTagInputConfig } from './tag-input.config';
 import { TagInputComponent } from './tag-input.component';
 import { TagModel } from './tag-input.types';
 import { TagDropdownItemTemplate, TagTemplate } from './tag-templates';
@@ -17,10 +24,14 @@ describe('TagInputComponent', () => {
   const input = () => el.querySelector<HTMLInputElement>('input.ti-input')!;
   const control = () => el.querySelector<HTMLElement>('.ti-control')!;
   const chips = () => Array.from(el.querySelectorAll<HTMLElement>('.ti-chip'));
-  const chipTexts = () => chips().map(c => c.textContent!.trim());
-  const options = () => Array.from(el.querySelectorAll<HTMLElement>('.dropdown-item[role=option]'));
-  const optionTexts = () => options().map(o => o.textContent!.trim());
-  const errors = () => Array.from(el.querySelectorAll('.invalid-feedback')).map(e => e.textContent!.trim());
+  const chipTexts = () => chips().map((c) => c.textContent!.trim());
+  const options = () =>
+    Array.from(el.querySelectorAll<HTMLElement>('.dropdown-item[role=option]'));
+  const optionTexts = () => options().map((o) => o.textContent!.trim());
+  const errors = () =>
+    Array.from(el.querySelectorAll('.invalid-feedback')).map((e) =>
+      e.textContent!.trim(),
+    );
 
   /** Lets async add/remove/validation chains and afterNextRender hooks finish. */
   async function settle() {
@@ -49,8 +60,17 @@ describe('TagInputComponent', () => {
     detect();
   }
 
-  function key(k: string, target: HTMLElement = input(), init: KeyboardEventInit = {}) {
-    const event = new KeyboardEvent('keydown', { key: k, cancelable: true, bubbles: true, ...init });
+  function key(
+    k: string,
+    target: HTMLElement = input(),
+    init: KeyboardEventInit = {},
+  ) {
+    const event = new KeyboardEvent('keydown', {
+      key: k,
+      cancelable: true,
+      bubbles: true,
+      ...init,
+    });
     target.dispatchEvent(event);
     detect();
     return event;
@@ -62,6 +82,15 @@ describe('TagInputComponent', () => {
     await settle();
   }
 
+  describe('metadata', () => {
+    it('supports TestBed metadata overrides (JIT re-compilation)', () => {
+      TestBed.overrideComponent(TagInputComponent, { add: { host: { 'data-overridden': '' } } });
+      setup();
+      expect(el.hasAttribute('data-overridden')).toBe(true);
+      expect(chipTexts()).toEqual(['a', 'b']);
+    });
+  });
+
   describe('rendering', () => {
     it('renders Bootstrap badges inside a form-control', () => {
       setup();
@@ -69,10 +98,14 @@ describe('TagInputComponent', () => {
       expect(chipTexts()).toEqual(['a', 'b']);
       expect(chips()[0].className).toContain('text-bg-secondary');
       expect(chips()[0].classList).toContain('focus-ring');
-      expect(el.querySelector('.btn-close')!.getAttribute('data-bs-theme')).toBe('dark');
+      expect(
+        el.querySelector('.btn-close')!.getAttribute('data-bs-theme'),
+      ).toBe('dark');
       fixture.componentRef.setInput('type', 'warning');
       detect();
-      expect(el.querySelector('.btn-close')!.getAttribute('data-bs-theme')).toBeNull();
+      expect(
+        el.querySelector('.btn-close')!.getAttribute('data-bs-theme'),
+      ).toBeNull();
     });
 
     it('sets input id, class and tabindex', () => {
@@ -83,7 +116,7 @@ describe('TagInputComponent', () => {
       expect(input().getAttribute('tabindex')).toBe('3');
       fixture.componentRef.setInput('tabindex', '');
       detect();
-      expect(input().hasAttribute('tabindex')).toBeFalse();
+      expect(input().hasAttribute('tabindex')).toBe(false);
       fixture.componentRef.setInput('inputId', undefined);
       detect();
       expect(input().id).toMatch(/^app-tag-input-\d+-input$/);
@@ -109,15 +142,15 @@ describe('TagInputComponent', () => {
       expect(el.querySelector('.btn-close')).toBeNull();
       expect(control().classList).toContain('form-control-plaintext');
       control().click();
-      expect(await comp.remove(0)).toBeFalse();
-      expect(await comp.add('x')).toBeFalse();
+      expect(await comp.remove(0)).toBe(false);
+      expect(await comp.add('x')).toBe(false);
     });
 
     it('hides only the input with hideForm', async () => {
       setup({ hideForm: true });
       expect(el.querySelector('input')).toBeNull();
       expect(el.querySelector('.btn-close')).not.toBeNull();
-      expect(await comp.add('c')).toBeTrue();
+      expect(await comp.add('c')).toBe(true);
     });
 
     it('disables via the disabled input', () => {
@@ -128,7 +161,7 @@ describe('TagInputComponent', () => {
 
     it('focuses the input when the control is clicked', () => {
       setup();
-      const focus = spyOn(input(), 'focus');
+      const focus = vi.spyOn(input(), 'focus');
       control().click();
       expect(focus).toHaveBeenCalled();
       chips()[0].click();
@@ -151,12 +184,12 @@ describe('TagInputComponent', () => {
 
     it('adds a trimmed tag on Enter and emits', async () => {
       setup();
-      const added = jasmine.createSpy('add');
+      const added = vi.fn();
       const tags: TagModel[][] = [];
       comp.added.subscribe(added);
-      comp.tags.subscribe(t => tags.push(t));
+      comp.tags.subscribe((t) => tags.push(t));
       type('  c ');
-      expect(key('Enter').defaultPrevented).toBeTrue();
+      expect(key('Enter').defaultPrevented).toBe(true);
       await settle();
       expect(comp.tags()).toEqual(['a', 'b', 'c']);
       expect(tags).toEqual([['a', 'b', 'c']]);
@@ -171,21 +204,21 @@ describe('TagInputComponent', () => {
     });
 
     it('ignores blank values and blinks duplicates', async () => {
-      jasmine.clock().install();
+      vi.useFakeTimers();
       try {
         setup();
         await enter('   ');
         await enter('a');
         expect(comp.tags()).toEqual(['a', 'b']);
         expect(chips()[0].classList).toContain('opacity-50');
-        jasmine.clock().tick(300);
+        vi.advanceTimersByTime(300);
         detect();
         expect(chips()[0].classList).not.toContain('opacity-50');
         fixture.componentRef.setInput('blinkIfDupe', false);
         await enter('a');
         expect(chips()[0].classList).not.toContain('opacity-50');
       } finally {
-        jasmine.clock().uninstall();
+        vi.useRealTimers();
       }
     });
 
@@ -198,13 +231,13 @@ describe('TagInputComponent', () => {
     it('splits on separatorKeys, separatorKeyCodes and Space when allow-space is false', async () => {
       setup({ separatorKeys: [','], separatorKeyCodes: [186] });
       type('c');
-      expect(key(',').defaultPrevented).toBeTrue();
+      expect(key(',').defaultPrevented).toBe(true);
       await settle();
       type('d');
       key(';', input(), { keyCode: 186 });
       await settle();
       type('e');
-      expect(key(' ').defaultPrevented).toBeFalse();
+      expect(key(' ').defaultPrevented).toBe(false);
       fixture.componentRef.setInput('allow-space', false);
       key(' ');
       await settle();
@@ -215,7 +248,7 @@ describe('TagInputComponent', () => {
       setup({ maxItems: 3 });
       await enter('c');
       expect(el.querySelector('input.ti-input')).toBeNull();
-      expect(await comp.add('d')).toBeFalse();
+      expect(await comp.add('d')).toBe(false);
     });
 
     it('creates object tags when modelAsStrings is false', async () => {
@@ -244,7 +277,9 @@ describe('TagInputComponent', () => {
       await enter('c');
       fixture.componentRef.setInput('onAdding', (t: TagModel) => of(`${t}!`));
       await enter('d');
-      fixture.componentRef.setInput('onAdding', () => Promise.reject(new Error('no')));
+      fixture.componentRef.setInput('onAdding', () =>
+        Promise.reject(new Error('no')),
+      );
       await enter('e');
       fixture.componentRef.setInput('onAdding', () => EMPTY);
       await enter('f');
@@ -254,19 +289,21 @@ describe('TagInputComponent', () => {
 
     it('confirms or cancels removal with onRemoving', async () => {
       setup({ onRemoving: () => throwError(() => new Error('keep')) });
-      expect(await comp.remove(0)).toBeFalse();
-      fixture.componentRef.setInput('onRemoving', (t: TagModel) => Promise.resolve(t));
-      const removed = jasmine.createSpy('remove');
+      expect(await comp.remove(0)).toBe(false);
+      fixture.componentRef.setInput('onRemoving', (t: TagModel) =>
+        Promise.resolve(t),
+      );
+      const removed = vi.fn();
       comp.removed.subscribe(removed);
-      expect(await comp.remove(0)).toBeTrue();
+      expect(await comp.remove(0)).toBe(true);
       expect(removed).toHaveBeenCalledWith('a');
-      expect(await comp.remove(5)).toBeFalse();
+      expect(await comp.remove(5)).toBe(false);
     });
 
     it('does not remove when removable is false', async () => {
       setup({ removable: false });
       expect(el.querySelector('.btn-close')).toBeNull();
-      expect(await comp.remove(0)).toBeFalse();
+      expect(await comp.remove(0)).toBe(false);
     });
   });
 
@@ -274,9 +311,9 @@ describe('TagInputComponent', () => {
     it('shows Bootstrap feedback for failing validators', async () => {
       setup({
         validators: [Validators.minLength(3), Validators.pattern(/^[a-z]+$/)],
-        errorMessages: { minlength: 'Too short' }
+        errorMessages: { minlength: 'Too short' },
       });
-      const failed = jasmine.createSpy('validationError');
+      const failed = vi.fn();
       comp.validationError.subscribe(failed);
       await enter('X1');
       expect(comp.tags()).toEqual(['a', 'b']);
@@ -291,8 +328,11 @@ describe('TagInputComponent', () => {
 
     it('runs async validators', async () => {
       setup({
-        asyncValidators: [(c: { value: string }) => of(c.value === 'taken' ? { taken: true } : null)],
-        errorMessages: { taken: 'Already taken' }
+        asyncValidators: [
+          (c: { value: string }) =>
+            of(c.value === 'taken' ? { taken: true } : null),
+        ],
+        errorMessages: { taken: 'Already taken' },
       });
       await enter('taken');
       expect(errors()).toEqual(['Already taken']);
@@ -304,8 +344,8 @@ describe('TagInputComponent', () => {
   describe('blur & paste', () => {
     it('adds on blur by default, emitting blur and marking touched', async () => {
       setup();
-      const blur = jasmine.createSpy('blur');
-      const focus = jasmine.createSpy('focus');
+      const blur = vi.fn();
+      const focus = vi.fn();
       comp.blurred.subscribe(blur);
       comp.focused.subscribe(focus);
       input().dispatchEvent(new FocusEvent('focus'));
@@ -332,19 +372,22 @@ describe('TagInputComponent', () => {
       if (text !== undefined) {
         data.setData('text', text);
       }
-      const event = new ClipboardEvent('paste', { clipboardData: text === undefined ? null : data, cancelable: true });
+      const event = new ClipboardEvent('paste', {
+        clipboardData: text === undefined ? null : data,
+        cancelable: true,
+      });
       input().dispatchEvent(event);
       return event;
     }
 
     it('emits paste and only splits into tags with addOnPaste', async () => {
       setup();
-      const pasted = jasmine.createSpy('paste');
+      const pasted = vi.fn();
       comp.pasted.subscribe(pasted);
-      expect(paste('x,y').defaultPrevented).toBeFalse();
+      expect(paste('x,y').defaultPrevented).toBe(false);
       expect(pasted).toHaveBeenCalledWith('x,y');
       fixture.componentRef.setInput('addOnPaste', true);
-      expect(paste('x, y,,a').defaultPrevented).toBeTrue();
+      expect(paste('x, y,,a').defaultPrevented).toBe(true);
       await settle();
       expect(comp.tags()).toEqual(['a', 'b', 'x', 'y']);
       fixture.componentRef.setInput('pasteSplitPattern', /[;|]/);
@@ -359,10 +402,11 @@ describe('TagInputComponent', () => {
   describe('keyboard', () => {
     beforeEach(() => setup({ tags: ['a', 'b', 'c'] }));
 
-    const focusedChip = () => chips().indexOf(document.activeElement as HTMLElement);
+    const focusedChip = () =>
+      chips().indexOf(document.activeElement as HTMLElement);
 
     it('moves from the input to the last chip with Backspace or ArrowLeft at the start', async () => {
-      const select = jasmine.createSpy('select');
+      const select = vi.fn();
       comp.selected.subscribe(select);
       document.body.appendChild(el);
       type('x');
@@ -371,7 +415,7 @@ describe('TagInputComponent', () => {
       await settle();
       expect(focusedChip()).toBe(-1);
       type('');
-      expect(key('ArrowLeft').defaultPrevented).toBeTrue();
+      expect(key('ArrowLeft').defaultPrevented).toBe(true);
       await settle();
       expect(focusedChip()).toBe(2);
       expect(select).toHaveBeenCalledWith('c');
@@ -425,15 +469,18 @@ describe('TagInputComponent', () => {
     it('does nothing at the start without tags', () => {
       fixture.componentRef.setInput('tags', []);
       detect();
-      expect(key('Backspace').defaultPrevented).toBeFalse();
+      expect(key('Backspace').defaultPrevented).toBe(false);
     });
   });
 
   describe('editing', () => {
-    const editInput = () => el.querySelector<HTMLInputElement>('.ti-chip input')!;
+    const editInput = () =>
+      el.querySelector<HTMLInputElement>('.ti-chip input')!;
 
     async function edit(index: number, text: string, commitKey = 'Enter') {
-      chips()[index].dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      chips()[index].dispatchEvent(
+        new MouseEvent('dblclick', { bubbles: true }),
+      );
       await settle();
       editInput().value = text;
       if (commitKey === 'blur') {
@@ -454,7 +501,7 @@ describe('TagInputComponent', () => {
     it('edits a tag in place with Enter or blur', async () => {
       setup({ editable: true, tags: ['a', 'b', 'c'] });
       document.body.appendChild(el);
-      const edited = jasmine.createSpy('tagEdited');
+      const edited = vi.fn();
       comp.tagEdited.subscribe(edited);
       chips()[0].dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
       await settle();
@@ -471,7 +518,11 @@ describe('TagInputComponent', () => {
     });
 
     it('keeps the tag when unchanged, duplicate or invalid; removes it when emptied', async () => {
-      setup({ editable: true, tags: ['a', 'b', 'c'], validators: [Validators.maxLength(3)] });
+      setup({
+        editable: true,
+        tags: ['a', 'b', 'c'],
+        validators: [Validators.maxLength(3)],
+      });
       await edit(0, 'a');
       await edit(0, 'b');
       await edit(0, 'long');
@@ -513,7 +564,11 @@ describe('TagInputComponent', () => {
   });
 
   describe('autocomplete', () => {
-    const LANGS = [{ id: 1, name: 'Java' }, { id: 2, name: 'JavaScript' }, { id: 3, name: 'Python' }];
+    const LANGS = [
+      { id: 1, name: 'Java' },
+      { id: 2, name: 'JavaScript' },
+      { id: 3, name: 'Python' },
+    ];
 
     it('suggests matching items not yet added and adds them on click', async () => {
       setup({ tags: [], autocompleteItems: ['Java', 'JavaScript', 'Python'] });
@@ -536,7 +591,9 @@ describe('TagInputComponent', () => {
       key('ArrowDown');
       key('ArrowDown');
       key('ArrowDown');
-      expect(input().getAttribute('aria-activedescendant')).toBe(options()[2].id);
+      expect(input().getAttribute('aria-activedescendant')).toBe(
+        options()[2].id,
+      );
       expect(options()[2].classList).toContain('bg-body-tertiary');
       key('ArrowUp');
       key('Enter');
@@ -560,7 +617,12 @@ describe('TagInputComponent', () => {
     });
 
     it('blocks free text with onlyFromAutocomplete', async () => {
-      setup({ tags: [], autocompleteItems: ['alpha'], onlyFromAutocomplete: true, focusFirstElement: true });
+      setup({
+        tags: [],
+        autocompleteItems: ['alpha'],
+        onlyFromAutocomplete: true,
+        focusFirstElement: true,
+      });
       type('al');
       expect(options()[0].classList).toContain('bg-body-tertiary');
       key('Enter');
@@ -571,7 +633,12 @@ describe('TagInputComponent', () => {
     });
 
     it('closes after picking unless keepOpen', async () => {
-      setup({ tags: [], autocompleteItems: ['a1', 'a2'], keepOpen: false, minimumTextLength: 0 });
+      setup({
+        tags: [],
+        autocompleteItems: ['a1', 'a2'],
+        keepOpen: false,
+        minimumTextLength: 0,
+      });
       type('a');
       options()[0].click();
       await settle();
@@ -581,23 +648,40 @@ describe('TagInputComponent', () => {
     it('uses matchingFn, limitItemsTo, displayBy and the item template', async () => {
       @Component({
         imports: [TagInputComponent, TagDropdownItemTemplate],
-        template: `
-          <app-tag-input [autocompleteItems]="langs" identifyBy="id" displayBy="name" [modelAsStrings]="false"
-                         [matchingFn]="startsWith" [limitItemsTo]="1">
-            <ng-template appTagDropdownItem let-item let-display="display" let-i="index">
-              <b>{{ i }}-{{ display }}</b>
-            </ng-template>
-          </app-tag-input>`
+        template: ` <app-tag-input
+          [autocompleteItems]="langs"
+          identifyBy="id"
+          displayBy="name"
+          [modelAsStrings]="false"
+          [matchingFn]="startsWith"
+          [limitItemsTo]="1"
+        >
+          <ng-template
+            appTagDropdownItem
+            let-item
+            let-display="display"
+            let-i="index"
+          >
+            <b>{{ i }}-{{ display }}</b>
+          </ng-template>
+        </app-tag-input>`,
       })
       class Host {
         langs = LANGS;
-        startsWith = (text: string, item: TagModel) => (item as { name: string }).name.startsWith(text);
+        startsWith = (text: string, item: TagModel) =>
+          (
+            item as {
+              name: string;
+            }
+          ).name.startsWith(text);
       }
       const f = TestBed.createComponent(Host);
       f.detectChanges();
       fixture = f as unknown as ComponentFixture<TagInputComponent>;
       el = f.nativeElement;
-      comp = f.debugElement.query(By.directive(TagInputComponent)).componentInstance;
+      comp = f.debugElement.query(
+        By.directive(TagInputComponent),
+      ).componentInstance;
       type('Ja');
       expect(optionTexts()).toEqual(['0-Java']);
       options()[0].click();
@@ -606,7 +690,11 @@ describe('TagInputComponent', () => {
     });
 
     it('shows all items on focus with showDropdownIfEmpty', () => {
-      setup({ tags: [], autocompleteItems: ['x', 'y'], showDropdownIfEmpty: true });
+      setup({
+        tags: [],
+        autocompleteItems: ['x', 'y'],
+        showDropdownIfEmpty: true,
+      });
       input().dispatchEvent(new FocusEvent('focus'));
       detect();
       expect(optionTexts()).toEqual(['x', 'y']);
@@ -622,26 +710,32 @@ describe('TagInputComponent', () => {
 
     describe('remote', () => {
       let results: Subject<TagModel[]>;
-      let search: jasmine.Spy;
+      let search: Mock;
 
       beforeEach(() => {
-        jasmine.clock().install();
+        vi.useFakeTimers();
         results = new Subject<TagModel[]>();
-        search = jasmine.createSpy('search').and.callFake(() => results);
+        search = vi.fn().mockImplementation(() => results);
       });
 
-      afterEach(() => jasmine.clock().uninstall());
+      afterEach(() => vi.useRealTimers());
 
       it('debounces text changes, shows loading and the results', () => {
-        setup({ tags: [], autocompleteObservable: search, textChangeDebounce: 100 });
-        const textChange = jasmine.createSpy('textChange');
+        setup({
+          tags: [],
+          autocompleteObservable: search,
+          textChangeDebounce: 100,
+        });
+        const textChange = vi.fn();
         comp.textChange.subscribe(textChange);
         type('p');
         type('py');
-        jasmine.clock().tick(100);
+        vi.advanceTimersByTime(100);
         detect();
-        expect(search).toHaveBeenCalledOnceWith('py');
-        expect(textChange).toHaveBeenCalledOnceWith('py');
+        expect(search).toHaveBeenCalledTimes(1);
+        expect(search).toHaveBeenCalledWith('py');
+        expect(textChange).toHaveBeenCalledTimes(1);
+        expect(textChange).toHaveBeenCalledWith('py');
         expect(el.querySelector('.spinner-border')).not.toBeNull();
         key('ArrowDown');
         results.next(['Python', 'PyPy']);
@@ -650,14 +744,18 @@ describe('TagInputComponent', () => {
       });
 
       it('cancels the previous request and recovers from errors', () => {
-        setup({ tags: [], autocompleteObservable: search, textChangeDebounce: 0 });
+        setup({
+          tags: [],
+          autocompleteObservable: search,
+          textChangeDebounce: 0,
+        });
         type('a');
-        jasmine.clock().tick(0);
+        vi.advanceTimersByTime(0);
         const first = results;
         results = new Subject<TagModel[]>();
         type('ab');
-        jasmine.clock().tick(0);
-        expect(first.observed).toBeFalse();
+        vi.advanceTimersByTime(0);
+        expect(first.observed).toBe(false);
         results.error(new Error('down'));
         detect();
         expect(el.querySelector('.spinner-border')).toBeNull();
@@ -665,9 +763,14 @@ describe('TagInputComponent', () => {
       });
 
       it('does not search below minimumTextLength unless showing on empty focus', () => {
-        setup({ tags: [], autocompleteObservable: search, minimumTextLength: 2, textChangeDebounce: 0 });
+        setup({
+          tags: [],
+          autocompleteObservable: search,
+          minimumTextLength: 2,
+          textChangeDebounce: 0,
+        });
         type('a');
-        jasmine.clock().tick(0);
+        vi.advanceTimersByTime(0);
         expect(search).not.toHaveBeenCalled();
         fixture.componentRef.setInput('showDropdownIfEmpty', true);
         type('');
@@ -676,14 +779,18 @@ describe('TagInputComponent', () => {
       });
 
       it('cleans up the timer and request on destroy', () => {
-        setup({ tags: [], autocompleteObservable: search, textChangeDebounce: 0 });
+        setup({
+          tags: [],
+          autocompleteObservable: search,
+          textChangeDebounce: 0,
+        });
         type('a');
-        jasmine.clock().tick(0);
+        vi.advanceTimersByTime(0);
         type('ab');
         fixture.destroy();
-        jasmine.clock().tick(0);
+        vi.advanceTimersByTime(0);
         expect(search).toHaveBeenCalledTimes(1);
-        expect(results.observed).toBeFalse();
+        expect(results.observed).toBe(false);
       });
     });
   });
@@ -691,12 +798,19 @@ describe('TagInputComponent', () => {
   describe('templates', () => {
     @Component({
       imports: [TagInputComponent, TagTemplate],
-      template: `
-        <app-tag-input [tags]="tags">
-          <ng-template appTag let-display="display" let-remove="remove" let-removable="removable" let-i="index">
-            <i class="custom" (click)="remove()">{{ i }}:{{ display }}:{{ removable }}</i>
-          </ng-template>
-        </app-tag-input>`
+      template: ` <app-tag-input [tags]="tags">
+        <ng-template
+          appTag
+          let-display="display"
+          let-remove="remove"
+          let-removable="removable"
+          let-i="index"
+        >
+          <i class="custom" (click)="remove()"
+            >{{ i }}:{{ display }}:{{ removable }}</i
+          >
+        </ng-template>
+      </app-tag-input>`,
     })
     class Host {
       tags = ['a', 'b'];
@@ -706,28 +820,32 @@ describe('TagInputComponent', () => {
       const f = TestBed.createComponent(Host);
       f.detectChanges();
       const host: HTMLElement = f.nativeElement;
-      expect(Array.from(host.querySelectorAll('.custom')).map(c => c.textContent)).toEqual(['0:a:true', '1:b:true']);
+      expect(
+        Array.from(host.querySelectorAll('.custom')).map((c) => c.textContent),
+      ).toEqual(['0:a:true', '1:b:true']);
       host.querySelector<HTMLElement>('.custom')!.click();
       await Promise.resolve();
-      const tagInput = f.debugElement.query(By.directive(TagInputComponent)).componentInstance as TagInputComponent;
+      const tagInput = f.debugElement.query(By.directive(TagInputComponent))
+        .componentInstance as TagInputComponent;
       await settleFixture(f);
       expect(tagInput.tags()).toEqual(['b']);
     });
 
     it('declares typed template contexts', () => {
-      expect(TagTemplate.ngTemplateContextGuard(null!, {})).toBeTrue();
-      expect(TagDropdownItemTemplate.ngTemplateContextGuard(null!, {})).toBeTrue();
+      expect(TagTemplate.ngTemplateContextGuard(null!, {})).toBe(true);
+      expect(TagDropdownItemTemplate.ngTemplateContextGuard(null!, {})).toBe(
+        true,
+      );
     });
   });
 
   describe('drag & drop', () => {
     @Component({
       imports: [TagInputComponent],
-      template: `
-        <app-tag-input id="a" dragZone="z" [(tags)]="a" />
+      template: ` <app-tag-input id="a" dragZone="z" [(tags)]="a" />
         <app-tag-input id="b" dragZone="z" [(tags)]="b" [maxItems]="max()" />
         <app-tag-input id="c" dragZone="other" [(tags)]="c" />
-        <app-tag-input id="d" [(tags)]="d" />`
+        <app-tag-input id="d" [(tags)]="d" />`,
     })
     class Host {
       a = signal<TagModel[]>(['a1', 'a2', 'a3']);
@@ -738,11 +856,15 @@ describe('TagInputComponent', () => {
     }
 
     let f: ComponentFixture<Host>;
-    const zone = (id: string) => (f.nativeElement as HTMLElement).querySelector<HTMLElement>(`#${id}`)!;
-    const chipsOf = (id: string) => Array.from(zone(id).querySelectorAll<HTMLElement>('.ti-chip'));
+    const zone = (id: string) =>
+      (f.nativeElement as HTMLElement).querySelector<HTMLElement>(`#${id}`)!;
+    const chipsOf = (id: string) =>
+      Array.from(zone(id).querySelectorAll<HTMLElement>('.ti-chip'));
     const fire = (type: string, target: HTMLElement, withData = true) => {
       const event = new DragEvent(type, {
-        bubbles: true, cancelable: true, dataTransfer: withData ? new DataTransfer() : null
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: withData ? new DataTransfer() : null,
       });
       target.dispatchEvent(event);
       f.detectChanges();
@@ -763,15 +885,18 @@ describe('TagInputComponent', () => {
 
     it('makes chips draggable only inside a drag zone', () => {
       expect(chipsOf('a')[0].getAttribute('draggable')).toBe('true');
-      expect(chipsOf('d')[0].hasAttribute('draggable')).toBeFalse();
-      expect(fire('dragstart', chipsOf('d')[0]).defaultPrevented).toBeTrue();
+      expect(chipsOf('d')[0].hasAttribute('draggable')).toBe(false);
+      expect(fire('dragstart', chipsOf('d')[0]).defaultPrevented).toBe(true);
     });
 
     it('moves a tag into another input of the same zone', () => {
       const event = fire('dragstart', chipsOf('a')[0]);
       expect(event.dataTransfer!.getData('text/plain')).toBe('a1');
       expect(chipsOf('a')[0].classList).toContain('opacity-50');
-      expect(fire('dragover', zone('b').querySelector('.ti-control')!).defaultPrevented).toBeTrue();
+      expect(
+        fire('dragover', zone('b').querySelector('.ti-control')!)
+          .defaultPrevented,
+      ).toBe(true);
       fire('drop', chipsOf('b')[0]);
       fire('dragend', chipsOf('a')[0]);
       expect(f.componentInstance.a()).toEqual(['a2', 'a3']);
@@ -789,7 +914,10 @@ describe('TagInputComponent', () => {
     });
 
     it('rejects drops from other zones, when full, or duplicates', () => {
-      expect(dragTo(chipsOf('c')[0], zone('a').querySelector('.ti-control')!).defaultPrevented).toBeFalse();
+      expect(
+        dragTo(chipsOf('c')[0], zone('a').querySelector('.ti-control')!)
+          .defaultPrevented,
+      ).toBe(false);
       expect(f.componentInstance.a()).toEqual(['a1', 'a2', 'a3']);
       f.componentInstance.b.set(['a1']);
       f.detectChanges();
@@ -811,7 +939,7 @@ describe('TagInputComponent', () => {
   describe('forms', () => {
     @Component({
       imports: [TagInputComponent, ReactiveFormsModule],
-      template: `<app-tag-input [formControl]="ctrl" />`
+      template: `<app-tag-input [formControl]="ctrl" />`,
     })
     class ReactiveHost {
       ctrl = new FormControl<TagModel[] | null>(['x']);
@@ -819,7 +947,7 @@ describe('TagInputComponent', () => {
 
     @Component({
       imports: [TagInputComponent, FormsModule],
-      template: `<app-tag-input [(ngModel)]="model" />`
+      template: `<app-tag-input [(ngModel)]="model" />`,
     })
     class TemplateHost {
       model = signal<TagModel[]>(['p']);
@@ -836,9 +964,10 @@ describe('TagInputComponent', () => {
       await settleFixture(f);
       expect(f.componentInstance.ctrl.value).toEqual(['x', 'y']);
       field.dispatchEvent(new FocusEvent('blur'));
-      expect(f.componentInstance.ctrl.touched).toBeTrue();
-      const tagInput = f.debugElement.children[0].componentInstance as TagInputComponent;
-      const emitted = jasmine.createSpy('tagsChange');
+      expect(f.componentInstance.ctrl.touched).toBe(true);
+      const tagInput = f.debugElement.children[0]
+        .componentInstance as TagInputComponent;
+      const emitted = vi.fn();
       tagInput.tags.subscribe(emitted);
       f.componentInstance.ctrl.setValue(null);
       f.detectChanges();
@@ -854,10 +983,13 @@ describe('TagInputComponent', () => {
 
     it('shows Bootstrap .is-invalid once the control is invalid and touched', () => {
       const f = TestBed.createComponent(ReactiveHost);
-      f.componentInstance.ctrl.setValidators(c => (c.value?.length ? null : { required: true }));
+      f.componentInstance.ctrl.setValidators((c) =>
+        c.value?.length ? null : { required: true },
+      );
       f.componentInstance.ctrl.setValue([]);
       f.detectChanges();
-      const ctrl = () => (f.nativeElement as HTMLElement).querySelector('.ti-control')!;
+      const ctrl = () =>
+        (f.nativeElement as HTMLElement).querySelector('.ti-control')!;
       expect(ctrl().classList).not.toContain('is-invalid');
       f.componentInstance.ctrl.markAsTouched();
       f.detectChanges();
@@ -874,6 +1006,149 @@ describe('TagInputComponent', () => {
       host.querySelector<HTMLButtonElement>('.btn-close')!.click();
       await settleFixture(f);
       expect(f.componentInstance.model()).toEqual([]);
+    });
+  });
+
+  describe('reliability, announcements and config', () => {
+    it('rejects a duplicate while the first add is still validating', async () => {
+      let release!: (v: null) => void;
+      setup({
+        tags: [],
+        asyncValidators: [() => new Promise((r) => (release = r))],
+      });
+      type('x');
+      key('Enter');
+      key('Enter');
+      release(null);
+      await settle();
+      expect(comp.tags()).toEqual(['x']);
+    });
+
+    it('emits nothing when destroyed while an add, removal or edit is pending', async () => {
+      const releases: ((v: null) => void)[] = [];
+      let confirm!: (t: TagModel) => void;
+      setup({
+        editable: true,
+        asyncValidators: [() => new Promise((r) => releases.push(r))],
+        onRemoving: (t: TagModel) => new Promise((r) => (confirm = () => r(t))),
+      });
+      const emitted = vi.fn();
+      comp.tags.subscribe(emitted);
+      const warn = vi.spyOn(console, 'warn');
+      const adding = comp.add('c');
+      const removing = comp.remove(0);
+      chips()[1].dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      await settle();
+      const edit = el.querySelector<HTMLInputElement>('.ti-chip input')!;
+      edit.value = 'bb';
+      key('Enter', edit);
+      fixture.destroy();
+      releases.forEach((release) => release(null));
+      confirm('a');
+      expect(await adding).toBe(false);
+      expect(await removing).toBe(false);
+      await settle();
+      expect(emitted).not.toHaveBeenCalled();
+      expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('removes the right tag when the list changes while onRemoving runs', async () => {
+      let confirm!: (t: TagModel) => void;
+      setup({
+        tags: ['a', 'b', 'c'],
+        onRemoving: (t: TagModel) => new Promise((r) => (confirm = () => r(t))),
+      });
+      const removing = comp.remove(1);
+      fixture.componentRef.setInput('tags', ['z', 'a', 'b', 'c']);
+      detect();
+      confirm('b');
+      expect(await removing).toBe(true);
+      expect(comp.tags()).toEqual(['z', 'a', 'c']);
+    });
+
+    it('does nothing when the tag disappeared while onRemoving ran', async () => {
+      let confirm!: (t: TagModel) => void;
+      setup({
+        tags: ['a', 'b'],
+        onRemoving: (t: TagModel) => new Promise((r) => (confirm = () => r(t))),
+      });
+      const removing = comp.remove(1);
+      fixture.componentRef.setInput('tags', ['a']);
+      detect();
+      confirm('b');
+      expect(await removing).toBe(false);
+      expect(comp.tags()).toEqual(['a']);
+    });
+
+    it('announces added and removed tags in a live region', async () => {
+      setup();
+      const live = () =>
+        el.querySelector('[aria-live=polite]')!.textContent!.trim();
+      expect(el.querySelector('[aria-live=polite]')!.classList).toContain(
+        'visually-hidden',
+      );
+      await enter('c');
+      expect(live()).toBe('c added');
+      await comp.remove(0);
+      detect();
+      expect(live()).toBe('a removed');
+    });
+
+    it('uses configurable labels', async () => {
+      setup({
+        removeTagText: 'Entfernen {label}',
+        editTagText: 'Bearbeiten {label}',
+        editable: true,
+        loadingText: 'Laden',
+        autocompleteObservable: () => new Subject<TagModel[]>(),
+        textChangeDebounce: 0,
+      });
+      expect(el.querySelector('.btn-close')!.getAttribute('aria-label')).toBe(
+        'Entfernen a',
+      );
+      chips()[0].dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      await settle();
+      expect(
+        el.querySelector('.ti-chip input')!.getAttribute('aria-label'),
+      ).toBe('Bearbeiten a');
+    });
+
+    it('takes defaults from provideTagInputConfig', async () => {
+      TestBed.configureTestingModule({
+        providers: [
+          provideTagInputConfig({
+            type: 'info',
+            secondaryPlaceholder: 'Tags...',
+            separatorKeys: [';'],
+          }),
+        ],
+      });
+      setup({ tags: [] });
+      expect(input().placeholder).toBe('Tags...');
+      type('q');
+      expect(key(';').defaultPrevented).toBe(true);
+      await settle();
+      expect(comp.tags()).toEqual(['q']);
+    });
+
+    it('shows the configured loading text', () => {
+      setup({
+        tags: [],
+        loadingText: 'Laden',
+        autocompleteObservable: () => new Subject<TagModel[]>(),
+        textChangeDebounce: 0,
+      });
+      vi.useFakeTimers();
+      try {
+        type('a');
+        vi.advanceTimersByTime(0);
+        detect();
+        expect(el.querySelector('.dropdown-menu')!.textContent).toContain(
+          'Laden',
+        );
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

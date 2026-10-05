@@ -16,7 +16,7 @@ export class ToastService {
   readonly config: GlobalConfig = { ...DEFAULT_TOAST_CONFIG, ...inject(TOAST_CONFIG, { optional: true }) };
 
   private readonly _toasts = signal<ToastPackage[]>([]);
-  /** Active and queued toasts in creation order. */
+  /** Active and queued toasts in display order. */
   readonly toasts = this._toasts.asReadonly();
 
   private readonly appRef = inject(ApplicationRef);
@@ -80,11 +80,12 @@ export class ToastService {
     if (global.maxOpened > 0 && this.currentlyActive >= global.maxOpened) {
       activate = global.autoDismiss;
       if (global.autoDismiss) {
-        this._toasts().find(t => t.toastRef.isActive())!.toastRef.close();
+        this.oldest(t => t.toastRef.isActive())!.toastRef.close();
       }
     }
 
-    this._toasts.update(list => [...list, pkg as ToastPackage]);
+    // Like ngx-toastr, newestOnTop applies when a toast is inserted; changing it never reorders open toasts.
+    this._toasts.update(list => (global.newestOnTop ? [pkg as ToastPackage, ...list] : [...list, pkg as ToastPackage]));
     this.ensureContainer();
     if (activate) {
       this.activate(pkg as ToastPackage);
@@ -133,11 +134,16 @@ export class ToastService {
     this._toasts.update(list => list.filter(t => t.toastId !== toastId));
     const max = this.config.maxOpened;
     if (max <= 0 || this.currentlyActive < max) {
-      const next = this._toasts().find(t => !t.toastRef.isActive());
+      const next = this.oldest(t => !t.toastRef.isActive());
       if (next) {
         this.activate(next);
       }
     }
+  }
+
+  /** The earliest created toast matching `predicate` (the list itself may be newest-first). */
+  private oldest(predicate: (toast: ToastPackage) => boolean): ToastPackage | undefined {
+    return this._toasts().filter(predicate).sort((a, b) => a.toastId - b.toastId)[0];
   }
 
   private toActive<P>(pkg: ToastPackage<P>): ActiveToast<P> {

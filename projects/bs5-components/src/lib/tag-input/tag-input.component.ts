@@ -3,12 +3,15 @@ import {
   computed, contentChild, inject, input, linkedSignal, model, numberAttribute, output, signal, viewChild
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import {
-  AsyncValidatorFn, ControlValueAccessor, FormControl, NgControl, ValidatorFn, Validators
-} from '@angular/forms';
+import { AsyncValidatorFn, ControlValueAccessor, FormControl, ValidatorFn, Validators } from '@angular/forms';
 import { Observable, Subscription, firstValueFrom, from, isObservable } from 'rxjs';
-import { closeButtonTheme, resolvePath } from '../util/bs-theme';
+import { FormControlBridge } from '../core/form-control-bridge';
+import { ChipKeyboard } from '../core/chip-keyboard';
+import { ChipComponent } from '../core/chip.component';
+import { format } from '../core/format';
+import { resolvePath } from '../util/bs-theme';
 import { TagDragService } from './tag-drag.service';
+import { TAG_INPUT_CONFIG } from './tag-input.config';
 import { TagAutocompleteFn, TagHook, TagMatchingFn, TagModel } from './tag-input.types';
 import { TagDropdownItemTemplate, TagTemplate } from './tag-templates';
 
@@ -17,43 +20,46 @@ let nextId = 0;
 /**
  * Bootstrap 5 chips input with ngx-chips' feature set: string or object tags, separators, paste, validation,
  * add/remove hooks, editing, keyboard navigation, autocomplete, and drag & drop between inputs.
- * Supports `[(tags)]`, `ngModel` and reactive forms.
+ * Supports `[(tags)]`, `ngModel`, reactive forms and Signal Forms (`[formField]`).
  */
 @Component({
   selector: 'app-tag-input',
   templateUrl: './tag-input.component.html',
   styleUrls: ['./tag-input.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet],
+  imports: [NgTemplateOutlet, ChipComponent],
   host: { 'class': 'd-block position-relative' }
 })
 export class TagInputComponent implements ControlValueAccessor, DoCheck {
+  private readonly config = inject(TAG_INPUT_CONFIG);
+  private readonly form = new FormControlBridge<TagModel[]>(this);
+
   // ---- model
   readonly tags = model<TagModel[]>([]);
   /** Text in the input (two-way bindable). */
   readonly inputText = model('');
-  readonly identifyBy = input('value');
-  readonly displayBy = input('display');
+  readonly identifyBy = input(this.config.identifyBy);
+  readonly displayBy = input(this.config.displayBy);
   /** Keep typed tags as strings (default). When false they become `{ [identifyBy]: text, [displayBy]: text }`. */
-  readonly modelAsStrings = input(true, { transform: booleanAttribute });
+  readonly modelAsStrings = input(this.config.modelAsStrings, { transform: booleanAttribute });
 
   // ---- adding & removing
   readonly maxItems = input(0, { transform: numberAttribute });
   /** Keys that add the current text, besides Enter (e.g. `[',', ';']`). */
-  readonly separatorKeys = input<string[]>([]);
-  readonly separatorKeyCodes = input<number[]>([]);
+  readonly separatorKeys = input<string[]>(this.config.separatorKeys);
+  readonly separatorKeyCodes = input<number[]>(this.config.separatorKeyCodes);
   /** `false` makes Space a separator. */
   readonly allowSpace = input(true, { alias: 'allow-space', transform: booleanAttribute });
-  readonly addOnBlur = input(true, { transform: booleanAttribute });
+  readonly addOnBlur = input(this.config.addOnBlur, { transform: booleanAttribute });
   readonly clearOnBlur = input(false, { transform: booleanAttribute });
-  readonly addOnPaste = input(false, { transform: booleanAttribute });
-  readonly pasteSplitPattern = input<string | RegExp>(',');
-  readonly trimTags = input(true, { transform: booleanAttribute });
-  readonly allowDupes = input(false, { transform: booleanAttribute });
+  readonly addOnPaste = input(this.config.addOnPaste, { transform: booleanAttribute });
+  readonly pasteSplitPattern = input<string | RegExp>(this.config.pasteSplitPattern);
+  readonly trimTags = input(this.config.trimTags, { transform: booleanAttribute });
+  readonly allowDupes = input(this.config.allowDupes, { transform: booleanAttribute });
   readonly blinkIfDupe = input(true, { transform: booleanAttribute });
-  readonly removable = input(true, { transform: booleanAttribute });
+  readonly removable = input(this.config.removable, { transform: booleanAttribute });
   /** Double-click a tag to edit it. */
-  readonly editable = input(false, { transform: booleanAttribute });
+  readonly editable = input(this.config.editable, { transform: booleanAttribute });
   readonly onlyFromAutocomplete = input(false, { transform: booleanAttribute });
   readonly onAdding = input<TagHook>();
   readonly onRemoving = input<TagHook>();
@@ -62,26 +68,31 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
   readonly validators = input<ValidatorFn[]>([]);
   readonly asyncValidators = input<AsyncValidatorFn[]>([]);
   /** Validation error key -> message shown below the control. */
-  readonly errorMessages = input<Record<string, string>>({});
+  readonly errorMessages = input<Record<string, string>>(this.config.errorMessages);
 
   // ---- rendering
   /** `false` renders the tags read-only without a border. */
   readonly editor = input(true, { transform: booleanAttribute });
+  readonly disabled = input(false, { transform: booleanAttribute });
   /** Hides the text input; tags can still be removed. */
   readonly hideForm = input(false, { transform: booleanAttribute });
   /** Bootstrap variant for chips (`text-bg-*`). */
-  readonly type = input('secondary');
+  readonly type = input(this.config.type);
   /** Shown when there are tags (or always, when `secondaryPlaceholder` is not set and there are none). */
-  readonly placeholder = input('');
+  readonly placeholder = input(this.config.placeholder);
   /** Shown when there are no tags. */
-  readonly secondaryPlaceholder = input<string>();
+  readonly secondaryPlaceholder = input<string | undefined>(this.config.secondaryPlaceholder);
   readonly inputId = input<string>();
   readonly inputClass = input('');
   readonly tabindex = input<number | undefined, unknown>(undefined, {
     transform: (v: unknown) => (v == null || v === '' ? undefined : numberAttribute(v))
   });
-  readonly disabled = input(false, { transform: booleanAttribute });
-  readonly textChangeDebounce = input(250, { transform: numberAttribute });
+  readonly textChangeDebounce = input(this.config.textChangeDebounce, { transform: numberAttribute });
+  readonly loadingText = input(this.config.loadingText);
+  readonly removeTagText = input(this.config.removeTagText);
+  readonly editTagText = input(this.config.editTagText);
+  readonly addedText = input(this.config.addedText);
+  readonly removedText = input(this.config.removedText);
 
   // ---- autocomplete (inline Bootstrap dropdown)
   readonly autocompleteItems = input<TagModel[]>([]);
@@ -89,7 +100,7 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
   readonly showDropdownIfEmpty = input(false, { transform: booleanAttribute });
   /** Keep the dropdown open after picking a suggestion. */
   readonly keepOpen = input(true, { transform: booleanAttribute });
-  readonly minimumTextLength = input(1, { transform: numberAttribute });
+  readonly minimumTextLength = input(this.config.minimumTextLength, { transform: numberAttribute });
   /** 0 = unlimited. */
   readonly limitItemsTo = input(0, { transform: numberAttribute });
   readonly matchingFn = input<TagMatchingFn>();
@@ -118,7 +129,7 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
   protected readonly value = linkedSignal(() => this.tags());
   protected readonly disabledState = linkedSignal(() => this.disabled());
   /** Bootstrap's `.is-invalid` once the bound form control is invalid and touched. */
-  protected readonly invalid = signal(false);
+  protected readonly invalid = this.form.invalid;
   protected readonly errors = signal<string[]>([]);
   protected readonly blinkIndex = signal(-1);
   protected readonly editingIndex = signal(-1);
@@ -126,6 +137,8 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
   protected readonly dropdownOpen = signal(false);
   protected readonly activeIndex = signal(-1);
   protected readonly loading = signal(false);
+  /** Text of the visually hidden live region (screen-reader announcements). */
+  protected readonly announcement = signal('');
   private readonly remoteItems = signal<TagModel[]>([]);
 
   private readonly input = viewChild<ElementRef<HTMLInputElement>>('input');
@@ -133,18 +146,21 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
   private readonly drag = inject(TagDragService);
-  /** Registered as value accessor here (instead of NG_VALUE_ACCESSOR) so the control state can drive `.is-invalid`. */
-  private readonly ngControl = inject(NgControl, { self: true, optional: true });
+  private readonly chipKeyboard = new ChipKeyboard(this.host, this.injector, {
+    removeChip: index => this.remove(index),
+    focusInput: () => this.focusInput()
+  });
+  /** Identities of tags whose async validation or `onAdding` hook is still running. */
+  private readonly pending = new Set<unknown>();
   private textTimer?: ReturnType<typeof setTimeout>;
   private fetchSub?: Subscription;
-  private onChange: (v: TagModel[]) => void = () => {};
-  private onTouched: () => void = () => {};
+  /** Async validators and hooks can resolve after the component is gone; then nothing may be emitted. */
+  private destroyed = false;
 
   protected readonly interactive = computed(() => this.editor() && !this.disabledState());
   protected readonly maxReached = computed(() => this.maxItems() > 0 && this.value().length >= this.maxItems());
   protected readonly showInput = computed(() => this.interactive() && !this.hideForm() && !this.maxReached());
   protected readonly canRemove = computed(() => this.interactive() && this.removable());
-  protected readonly closeTheme = computed(() => closeButtonTheme(`text-bg-${this.type()}`));
   protected readonly hasAutocomplete = computed(() =>
     !!this.autocompleteObservable() || this.autocompleteItems().length > 0);
 
@@ -180,18 +196,15 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
     this.dropdownVisible() && this.activeIndex() >= 0 ? this.optionId(this.activeIndex()) : null);
 
   constructor() {
-    if (this.ngControl) {
-      this.ngControl.valueAccessor = this;
-    }
     inject(DestroyRef).onDestroy(() => {
+      this.destroyed = true;
       clearTimeout(this.textTimer);
       this.fetchSub?.unsubscribe();
     });
   }
 
   ngDoCheck() {
-    const control = this.ngControl;
-    this.invalid.set(control?.invalid === true && control.touched === true);
+    this.form.check();
   }
 
   // ---------------------------------------------------------------- public API
@@ -217,23 +230,33 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
       return false;
     }
     let tag = this.normalize(trimmed);
-    const existing = this.indexOf(tag);
-    if (existing >= 0 && !this.allowDupes()) {
-      if (this.blinkIfDupe()) {
-        this.blink(existing);
+    const id = this.identify(tag);
+    if (!this.allowDupes()) {
+      const existing = this.indexOf(tag);
+      if (existing >= 0 || this.pending.has(id)) {
+        if (existing >= 0 && this.blinkIfDupe()) {
+          this.blink(existing);
+        }
+        return false;
       }
-      return false;
     }
-    if (!(await this.passesValidation(tag))) {
-      return false;
-    }
+    this.pending.add(id);
     try {
+      if (!(await this.passesValidation(tag))) {
+        return false;
+      }
       tag = await this.runHook(this.onAdding(), tag);
     } catch {
+      return false;
+    } finally {
+      this.pending.delete(id);
+    }
+    if (this.destroyed) {
       return false;
     }
     this.update([...this.value(), tag]);
     this.clearText();
+    this.announce(this.addedText(), tag);
     this.added.emit(tag);
     return true;
   }
@@ -249,7 +272,14 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
     } catch {
       return false;
     }
-    this.update(this.value().filter((_, i) => i !== index));
+    // The list may have changed while the hook ran: remove this tag, not whatever is at `index` now.
+    const current = this.value();
+    const at = current[index] === tag ? index : current.indexOf(tag);
+    if (at < 0 || this.destroyed) {
+      return false;
+    }
+    this.update(current.filter((_, i) => i !== at));
+    this.announce(this.removedText(), tag);
     this.removed.emit(tag);
     return true;
   }
@@ -262,6 +292,10 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
 
   protected optionId(index: number) {
     return `${this.id}-option-${index}`;
+  }
+
+  protected label(text: string, item: TagModel) {
+    return format(text, { label: this.display(item) });
   }
 
   protected tagContext(item: TagModel, index: number) {
@@ -322,7 +356,7 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
     const atStart = field.selectionStart === 0 && field.selectionEnd === 0;
     if ((event.key === 'Backspace' || event.key === 'ArrowLeft') && atStart && this.value().length) {
       event.preventDefault();
-      this.focusChip(this.value().length - 1);
+      this.chipKeyboard.focus(this.value().length - 1);
     }
   }
 
@@ -341,7 +375,7 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
     } else if (this.clearOnBlur()) {
       this.clearText();
     }
-    this.onTouched();
+    this.form.onTouched();
     this.blurred.emit(text);
   }
 
@@ -369,30 +403,7 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
   // ---------------------------------------------------------------- chip events
 
   protected onChipKeydown(event: KeyboardEvent, index: number) {
-    switch (event.key) {
-      case 'ArrowLeft':
-        event.preventDefault();
-        this.focusChip(index - 1);
-        break;
-      case 'ArrowRight':
-        event.preventDefault();
-        this.focusChip(index + 1);
-        break;
-      case 'Backspace':
-      case 'Delete': {
-        event.preventDefault();
-        const next = event.key === 'Backspace' ? index - 1 : index;
-        void this.remove(index).then(done => {
-          if (done) {
-            this.focusChip(next);
-          }
-        });
-        break;
-      }
-      case 'Escape':
-        this.focusInput();
-        break;
-    }
+    this.chipKeyboard.keydown(event, index);
   }
 
   protected startEdit(index: number) {
@@ -418,7 +429,7 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
       void this.commitEdit(index, (event.target as HTMLInputElement).value);
     } else if (event.key === 'Escape') {
       this.editingIndex.set(-1);
-      this.focusChip(index);
+      this.chipKeyboard.focus(index);
     }
   }
 
@@ -440,7 +451,7 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
       ? text
       : { ...old, [this.displayBy()]: text, [this.identifyBy()]: text };
     const duplicate = this.value().some((t, i) => i !== index && this.identify(t) === this.identify(tag));
-    if ((duplicate && !this.allowDupes()) || !(await this.passesValidation(tag))) {
+    if ((duplicate && !this.allowDupes()) || !(await this.passesValidation(tag)) || this.destroyed) {
       return;
     }
     this.update(this.value().map((t, i) => (i === index ? tag : t)));
@@ -494,11 +505,6 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
     this.drag.current = null;
   }
 
-  private acceptsDrop() {
-    const state = this.drag.current;
-    return !!state && state.zone === this.dragZone() && this.interactive();
-  }
-
   /** Removes a tag that was dragged into another input of the same zone. */
   transferOut(index: number) {
     const item = this.value()[index];
@@ -512,12 +518,12 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
     this.value.set(Array.isArray(value) ? [...value] : []);
   }
 
-  registerOnChange(fn: (v: TagModel[]) => void): void {
-    this.onChange = fn;
+  registerOnChange(fn: (value: TagModel[]) => void): void {
+    this.form.onChange = fn;
   }
 
   registerOnTouched(fn: () => void): void {
-    this.onTouched = fn;
+    this.form.onTouched = fn;
   }
 
   setDisabledState(isDisabled: boolean): void {
@@ -526,10 +532,19 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
 
   // ---------------------------------------------------------------- internals
 
+  private acceptsDrop() {
+    const state = this.drag.current;
+    return !!state && state.zone === this.dragZone() && this.interactive();
+  }
+
   private update(tags: TagModel[]) {
     this.value.set(tags);
     this.tags.set(tags);
-    this.onChange(tags);
+    this.form.onChange(tags);
+  }
+
+  private announce(text: string, tag: TagModel) {
+    this.announcement.set(format(text, { label: this.display(tag) }));
   }
 
   /** Clears the text right away: keys typed before the next render must not land on the old text. */
@@ -620,18 +635,5 @@ export class TagInputComponent implements ControlValueAccessor, DoCheck {
     const next = Math.min(Math.max(this.activeIndex() + step, 0), count - 1);
     this.activeIndex.set(next);
     this.host.nativeElement.querySelector(`#${this.optionId(next)}`)?.scrollIntoView({ block: 'nearest' });
-  }
-
-  private focusChip(index: number) {
-    afterNextRender({
-      write: () => {
-        const chips = this.host.nativeElement.querySelectorAll<HTMLElement>('.ti-chip');
-        if (!chips.length || index >= chips.length) {
-          this.focusInput();
-        } else {
-          chips[Math.max(index, 0)].focus();
-        }
-      }
-    }, { injector: this.injector });
   }
 }

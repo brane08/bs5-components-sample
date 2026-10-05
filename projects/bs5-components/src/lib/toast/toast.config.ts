@@ -40,6 +40,10 @@ export interface IndividualConfig<TPayload = unknown> {
   easeTime: number;
   /** Component used to render the toast; it can inject `ToastPackage`. */
   toastComponent: Type<unknown>;
+  /** Accessible label of the close button. */
+  closeLabel: string;
+  /** Accessible label of the duplicate counter badge. */
+  duplicatesLabel: string;
   payload?: TPayload;
 }
 
@@ -85,7 +89,9 @@ export const DEFAULT_TOAST_CONFIG: GlobalConfig = {
     info: 'text-bg-info',
     success: 'text-bg-success',
     warning: 'text-bg-warning'
-  }
+  },
+  closeLabel: 'Close',
+  duplicatesLabel: 'Repeated'
 };
 
 export const TOAST_CONFIG = new InjectionToken<Partial<GlobalConfig>>('TOAST_CONFIG');

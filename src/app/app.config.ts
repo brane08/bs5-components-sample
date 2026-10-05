@@ -1,5 +1,5 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from '@angular/core';
-import { provideToastr } from './shared/toast';
+import { provideToastr } from 'bs5-components';
 
 export const appConfig: ApplicationConfig = {
   providers: [

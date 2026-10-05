@@ -1,8 +1,3 @@
-@use "bootstrap/scss/bootstrap" as bs;
-
-// Dropdowns rendered in a CDK overlay (`<app-multi-select appendTo="body">`) must stack like Bootstrap popovers:
-// above modals ($zindex-modal) and below toasts ($zindex-toast). The CDK default (1000, declared inside its
-// `cdk-overlay` cascade layer) would put them behind an open modal. Bootstrap has no class for this element.
-.cdk-overlay-container {
-  z-index: bs.$zindex-popover;
-}
+@use "bootstrap/scss/bootstrap";
+// Library global styles (in an app installed from npm: `@use "bs5-components/styles";`).
+@use "../projects/bs5-components/src/styles";

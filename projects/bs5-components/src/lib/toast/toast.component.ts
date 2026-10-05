@@ -13,8 +13,11 @@ import { ToastPackage } from './toast-ref';
     '[attr.role]': 'role',
     '[attr.aria-live]': "role === 'alert' ? 'assertive' : 'polite'",
     'aria-atomic': 'true',
-    '(mouseenter)': 'ref.pause()',
-    '(mouseleave)': 'ref.resume()',
+    '(mouseenter)': 'setHover(true)',
+    '(mouseleave)': 'setHover(false)',
+    '(focusin)': 'setFocus(true)',
+    '(focusout)': 'setFocus(false)',
+    '(keydown.escape)': 'ref.manualClose()',
     '(click)': 'ref.tap()'
   }
 })
@@ -32,6 +35,27 @@ export class BsToastComponent {
   /** Without a header the close button sits on the colored body. */
   protected readonly bodyCloseTheme = closeButtonTheme(this.pkg.typeClass);
   protected readonly duplicates = computed(() => this.ref.duplicatesCount());
+  private hovered = false;
+  private focused = false;
+
+  /** Hover and keyboard focus both keep the toast open (WCAG 2.2.1 Timing Adjustable). */
+  protected setHover(hovered: boolean) {
+    this.hovered = hovered;
+    this.updatePause();
+  }
+
+  protected setFocus(focused: boolean) {
+    this.focused = focused;
+    this.updatePause();
+  }
+
+  private updatePause() {
+    if (this.hovered || this.focused) {
+      this.ref.pause();
+    } else {
+      this.ref.resume();
+    }
+  }
 
   close(event: Event) {
     event.stopPropagation();

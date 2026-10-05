@@ -1,0 +1,19 @@
+{
+  "$schema": "../../node_modules/ng-packagr/ng-package.schema.json",
+  "dest": "../../dist/bs5-components",
+  "lib": {
+    "entryFile": "src/public-api.ts",
+    "sass": {
+      "silenceDeprecations": [
+        "import"
+      ]
+    }
+  },
+  "assets": [
+    {
+      "input": "src/styles",
+      "glob": "**/*.scss",
+      "output": "styles"
+    }
+  ]
+}
