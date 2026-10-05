@@ -184,7 +184,7 @@ describe('Toast', () => {
       expect(toasts().length).toBe(0);
     });
 
-    it('orders toasts by newestOnTop', async () => {
+    it('applies newestOnTop when a toast is inserted, without reordering open toasts', async () => {
       service.info('first');
       service.info('second');
       await render();
@@ -192,7 +192,40 @@ describe('Toast', () => {
       service.config.newestOnTop = false;
       service.info('third');
       await render();
-      expect(toasts().map(t => t.textContent!.trim())).toEqual(['first', 'second', 'third']);
+      expect(toasts().map(t => t.textContent!.trim())).toEqual(['second', 'first', 'third']);
+    });
+
+    it('pauses while hovered or focused and closes on Escape', async () => {
+      const { toastRef } = service.info('x', 'T', { timeOut: 1000, extendedTimeOut: 100, closeButton: true });
+      await render();
+      const toast = toasts()[0];
+      toast.dispatchEvent(new MouseEvent('mouseenter'));
+      toast.dispatchEvent(new FocusEvent('focusin'));
+      toast.dispatchEvent(new MouseEvent('mouseleave'));
+      await tick(5000);
+      expect(toastRef.isClosed()).toBeFalse();
+      toast.dispatchEvent(new FocusEvent('focusout'));
+      await tick(100);
+      expect(toastRef.isClosed()).toBeTrue();
+      const second = service.info('y');
+      await render();
+      toasts()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      expect(second.toastRef.isClosed()).toBeTrue();
+    });
+
+    it('uses configurable labels and hides the progress bar from screen readers', async () => {
+      service.config.closeLabel = 'Schließen';
+      service.config.duplicatesLabel = 'Wiederholt';
+      service.config.preventDuplicates = true;
+      service.config.countDuplicates = true;
+      service.info('x', undefined, { closeButton: true, progressBar: true });
+      service.info('x');
+      await render();
+      const toast = toasts()[0];
+      expect(toast.querySelector('.btn-close')!.getAttribute('aria-label')).toBe('Schließen');
+      expect(toast.querySelector('.badge')!.getAttribute('aria-label')).toBe('Wiederholt');
+      expect(toast.querySelector('.progress')!.getAttribute('aria-hidden')).toBe('true');
+      expect(toast.querySelector('[role=progressbar]')).toBeNull();
     });
 
     it('emits onShown after the toast is rendered', async () => {
@@ -391,6 +424,16 @@ describe('Toast', () => {
       expect(toasts().map(t => t.textContent!.trim())).toEqual(['b']);
       b.toastRef.close();
       expect(service.toasts().length).toBe(0);
+    });
+
+    it('activates queued toasts oldest first even when newest are on top', () => {
+      setup({ maxOpened: 1, newestOnTop: true });
+      const a = service.info('a');
+      const b = service.info('b');
+      const c = service.info('c');
+      a.toastRef.close();
+      expect(b.toastRef.isActive()).toBeTrue();
+      expect(c.toastRef.isActive()).toBeFalse();
     });
 
     it('dismisses the oldest toast with autoDismiss', async () => {

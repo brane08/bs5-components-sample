@@ -4,30 +4,23 @@
      (click)="focusInput()" (dragover)="onDragOver($event)" (drop)="onDrop($event, value().length)">
   @for (item of value(); track $index; let i = $index) {
     <!-- Chips take focus for keyboard navigation; Bootstrap's focus-ring shows the selection. -->
-    <span class="badge ti-chip d-inline-flex align-items-center gap-1 mw-100 fw-normal focus-ring text-bg-{{ type() }}"
-          tabindex="-1" [class.opacity-50]="i === blinkIndex() || i === draggingIndex()"
-          [attr.draggable]="dragZone() && interactive() ? 'true' : null"
-          (click)="$event.stopPropagation()" (dblclick)="startEdit(i)" (focus)="selected.emit(item)"
-          (keydown)="onChipKeydown($event, i)" (dragstart)="onDragStart($event, i)" (dragend)="onDragEnd()"
-          (dragover)="onDragOver($event)" (drop)="onDrop($event, i)">
+    <app-chip class="ti-chip" [variant]="type()" [removable]="canRemove() && i !== editingIndex()"
+              [removeLabel]="label(removeTagText(), item)" [class.opacity-50]="i === blinkIndex() || i === draggingIndex()"
+              [attr.draggable]="dragZone() && interactive() ? 'true' : null"
+              (remove)="remove(i)" (click)="$event.stopPropagation()" (dblclick)="startEdit(i)"
+              (focus)="selected.emit(item)" (keydown)="onChipKeydown($event, i)" (dragstart)="onDragStart($event, i)"
+              (dragend)="onDragEnd()" (dragover)="onDragOver($event)" (drop)="onDrop($event, i)">
       @if (i === editingIndex()) {
         <input #editInput class="border-0 p-0 bg-transparent text-reset" type="text"
-               [size]="display(item).length || 1" [value]="display(item)" [attr.aria-label]="'Edit ' + display(item)"
+               [size]="display(item).length || 1" [value]="display(item)" [attr.aria-label]="label(editTagText(), item)"
                (keydown)="onEditKeydown($event, i)" (blur)="commitEdit(i, editInput.value)"
                (click)="$event.stopPropagation()">
+      } @else if (tagTpl(); as tpl) {
+        <ng-container *ngTemplateOutlet="tpl.template; context: tagContext(item, i)" />
       } @else {
-        @if (tagTpl(); as tpl) {
-          <ng-container *ngTemplateOutlet="tpl.template; context: tagContext(item, i)" />
-        } @else {
-          <span class="text-truncate">{{ display(item) }}</span>
-        }
-        @if (canRemove()) {
-          <button type="button" class="btn-close p-0" tabindex="-1" [attr.data-bs-theme]="closeTheme()"
-                  [attr.aria-label]="'Remove ' + display(item)"
-                  (click)="remove(i); $event.stopPropagation()"></button>
-        }
+        {{ display(item) }}
       }
-    </span>
+    </app-chip>
   }
   @if (showInput()) {
     <!-- size="1" lets the flex layout, not the input's default width, decide how wide it is. -->
@@ -47,7 +40,7 @@
        [id]="listboxId" (mousedown)="$event.preventDefault()">
     @if (loading() && !suggestions().length) {
       <div class="dropdown-item-text d-flex align-items-center text-body-secondary">
-        <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading...
+        <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>{{ loadingText() }}
       </div>
     }
     @for (item of suggestions(); track $index; let i = $index) {
@@ -66,3 +59,6 @@
 @for (message of errors(); track message) {
   <div class="invalid-feedback d-block">{{ message }}</div>
 }
+
+<!-- Screen-reader announcements (Bootstrap's visually-hidden). -->
+<div class="visually-hidden" role="status" aria-live="polite">{{ announcement() }}</div>

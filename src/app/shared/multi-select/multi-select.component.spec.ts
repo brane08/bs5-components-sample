@@ -5,6 +5,7 @@ import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { Subject } from 'rxjs';
 import { MultiSelectComponent } from './multi-select.component';
+import { provideSelectConfig } from './select.config';
 import {
   SELECT_TEMPLATES, SelectFooterTemplate, SelectHeaderTemplate, SelectLabelTemplate, SelectLoadingTemplate,
   SelectMultiLabelTemplate, SelectNotFoundTemplate, SelectOptgroupTemplate, SelectOptionTemplate, SelectTagTemplate,
@@ -59,6 +60,13 @@ describe('MultiSelectComponent', () => {
     if (render) {
       detect();
     }
+    return event;
+  }
+
+  function keyOn(target: HTMLElement, k: string, init: KeyboardEventInit = {}) {
+    const event = new KeyboardEvent('keydown', { key: k, cancelable: true, bubbles: true, ...init });
+    target.dispatchEvent(event);
+    detect();
     return event;
   }
 
@@ -1141,6 +1149,222 @@ describe('MultiSelectComponent', () => {
       for (const dir of guards) {
         expect((dir as any).ngTemplateContextGuard(null, {})).toBeTrue();
       }
+    });
+  });
+
+  describe('mouse', () => {
+    beforeEach(() => setup({ bindValue: 'id' }));
+
+    it('ignores right and middle clicks', () => {
+      for (const button of [1, 2]) {
+        const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true, button });
+        control().dispatchEvent(event);
+        expect(event.defaultPrevented).toBeFalse();
+      }
+      detect();
+      expect(comp.isOpen()).toBeFalse();
+    });
+
+    it('does not toggle the panel from the chip and clear buttons', () => {
+      comp.writeValue([1, 2]);
+      detect();
+      mousedown(el.querySelector<HTMLElement>('.ms-chip .btn-close')!);
+      mousedown(el.querySelector<HTMLElement>('.ms-clear')!);
+      expect(comp.isOpen()).toBeFalse();
+    });
+  });
+
+  describe('keyboard (extended)', () => {
+    const many = Array.from({ length: 30 }, (_, i) => `Item ${String(i).padStart(2, '0')}`);
+
+    it('jumps with Home/End and pages with PageUp/PageDown', () => {
+      setup({ items: many, bindLabel: undefined });
+      key('Home');
+      key('End');
+      expect(comp.isOpen()).toBeFalse();
+      open();
+      key('End');
+      expect(marked()!.textContent!.trim()).toBe('Item 29');
+      key('Home');
+      expect(marked()!.textContent!.trim()).toBe('Item 00');
+      key('PageDown');
+      expect(marked()!.textContent!.trim()).toBe('Item 07');
+      key('PageUp');
+      expect(marked()!.textContent!.trim()).toBe('Item 00');
+      key('PageUp');
+      expect(marked()!.textContent!.trim()).toBe('Item 00');
+      comp.close();
+      expect(key('PageDown').defaultPrevented).toBeFalse();
+    });
+
+    it('pages by at least one row with large rows', () => {
+      setup({ items: many, bindLabel: undefined, itemSize: 1000 });
+      open();
+      key('PageDown');
+      expect(marked()!.textContent!.trim()).toBe('Item 01');
+    });
+
+    it('jumps to options by typing when not searchable', () => {
+      jasmine.clock().install();
+      try {
+        setup({ searchable: false, items: ['Apple', 'Banana', 'Blueberry', { label: 'Bx', disabled: true }, 'Cherry'],
+          bindLabel: undefined });
+        key('b');
+        expect(comp.isOpen()).toBeTrue();
+        expect(marked()!.textContent!.trim()).toBe('Banana');
+        key('b');
+        expect(marked()!.textContent!.trim()).toBe('Banana');
+        jasmine.clock().tick(500);
+        key('b');
+        expect(marked()!.textContent!.trim()).toBe('Blueberry');
+        key('l');
+        expect(marked()!.textContent!.trim()).toBe('Blueberry');
+        jasmine.clock().tick(500);
+        key('z');
+        expect(marked()!.textContent!.trim()).toBe('Blueberry');
+        jasmine.clock().tick(500);
+        keyOn(input(), 'a');
+        expect(marked()!.textContent!.trim()).toBe('Apple');
+        keyOn(input(), 'c');
+        keyOn(input(), 'x', { ctrlKey: true });
+        comp.writeValue([]);
+      } finally {
+        jasmine.clock().uninstall();
+      }
+    });
+
+    it('types normally when searchable or with modifiers', () => {
+      setup({ searchable: false, items: ['Apple'], bindLabel: undefined });
+      keyOn(input(), 'a', { metaKey: true });
+      keyOn(input(), 'a', { altKey: true });
+      expect(comp.isOpen()).toBeFalse();
+      setup({ items: ['Apple'], bindLabel: undefined });
+      key('a');
+      expect(comp.isOpen()).toBeFalse();
+    });
+
+    it('moves from the search input to the chips and removes them with the keyboard', async () => {
+      setup({ bindValue: 'id' });
+      document.body.appendChild(el);
+      comp.writeValue([1, 2, 3]);
+      detect();
+      const chipEls = () => Array.from(el.querySelectorAll<HTMLElement>('app-chip'));
+      type('x');
+      input().setSelectionRange(1, 1);
+      expect(key('ArrowLeft').defaultPrevented).toBeFalse();
+      type('');
+      expect(key('ArrowLeft').defaultPrevented).toBeTrue();
+      await fixture.whenStable();
+      expect(document.activeElement).toBe(chipEls()[2]);
+      keyOn(chipEls()[2], 'Backspace');
+      await Promise.resolve();
+      await fixture.whenStable();
+      detect();
+      expect(comp.selectedValues()).toEqual([1, 2]);
+      expect(document.activeElement).toBe(chipEls()[1]);
+      keyOn(chipEls()[1], 'ArrowRight');
+      await fixture.whenStable();
+      expect(document.activeElement).toBe(input());
+      fixture.componentRef.setInput('readonly', true);
+      detect();
+      keyOn(chipEls()[0], 'Delete');
+      await Promise.resolve();
+      expect(comp.selectedValues()).toEqual([1, 2]);
+      expect(comp['removeChipAt'](9)).toBeFalse();
+    });
+
+    it('ignores ArrowLeft for single selection and without a value', () => {
+      setup();
+      expect(key('ArrowLeft').defaultPrevented).toBeFalse();
+      fixture.componentRef.setInput('multiple', false);
+      comp.writeValue(LANGS[0]);
+      expect(key('ArrowLeft').defaultPrevented).toBeFalse();
+    });
+  });
+
+  describe('announcements', () => {
+    const live = () => el.querySelector('[aria-live=polite]')!.textContent!.trim();
+
+    it('announces selection changes in a visually hidden live region', () => {
+      setup({ bindValue: 'id', showSelectAll: true });
+      expect(el.querySelector('[aria-live=polite]')!.classList).toContain('visually-hidden');
+      comp.select(LANGS[0]);
+      detect();
+      expect(live()).toBe('Java selected');
+      comp.unselect(LANGS[0]);
+      detect();
+      expect(live()).toBe('Java removed');
+      open();
+      document.querySelector<HTMLElement>('.ms-select-all')!.click();
+      detect();
+      expect(live()).toBe('3 selected');
+      document.querySelector<HTMLElement>('.ms-select-all')!.click();
+      detect();
+      expect(live()).toBe('3 removed');
+      comp.select(LANGS[1]);
+      comp.clearModel();
+      detect();
+      expect(live()).toBe('Selection cleared');
+    });
+
+    it('uses configurable texts from provideSelectConfig', () => {
+      TestBed.configureTestingModule({
+        providers: [provideSelectConfig({ selectedText: '{label} gewählt', removeItemText: 'Entferne {label}',
+          notFoundText: 'Nichts', type: 'info' })]
+      });
+      setup({ bindValue: 'id' });
+      comp.select(LANGS[0]);
+      detect();
+      expect(live()).toBe('Java gewählt');
+      expect(el.querySelector('.ms-chip .btn-close')!.getAttribute('aria-label')).toBe('Entferne Java');
+      expect(el.querySelector('.ms-chip')!.classList).toContain('text-bg-info');
+      type('zzz');
+      expect(panel()!.textContent).toContain('Nichts');
+    });
+  });
+
+  describe('batched selection', () => {
+    it('selects all with one model update, skipping disabled and duplicate items and honouring the max', () => {
+      const dup = { id: 1, name: 'Java again', kind: 'Static' };
+      setup({ bindValue: 'id', showSelectAll: true, items: [...LANGS, dup] });
+      const onChange = jasmine.createSpy('onChange');
+      const added = jasmine.createSpy('add');
+      comp.registerOnChange(onChange);
+      comp.add.subscribe(added);
+      open();
+      document.querySelector<HTMLElement>('.ms-select-all')!.click();
+      expect(onChange).toHaveBeenCalledOnceWith([1, 2, 3]);
+      expect(added).toHaveBeenCalledTimes(3);
+      comp.clearModel();
+      fixture.componentRef.setInput('maxSelectedItems', 2);
+      detect();
+      document.querySelector<HTMLElement>('.ms-select-all')!.click();
+      expect(comp.selectedValues()).toEqual([1, 2]);
+    });
+
+    it('unselects all with one model update, emitting each removed item', () => {
+      setup({ bindValue: 'id', showSelectAll: true, items: [], });
+      comp.writeValue([1, 2]);
+      fixture.componentRef.setInput('items', LANGS.slice(0, 2));
+      const onChange = jasmine.createSpy('onChange');
+      const removed = jasmine.createSpy('remove');
+      comp.registerOnChange(onChange);
+      comp.remove.subscribe(removed);
+      open();
+      document.querySelector<HTMLElement>('.ms-select-all')!.click();
+      expect(onChange).toHaveBeenCalledOnceWith([]);
+      expect(removed.calls.allArgs()).toEqual([[LANGS[0]], [LANGS[1]]]);
+    });
+
+    it('scans with a custom compareWith', () => {
+      setup({ compareWith: (a: Lang, b: Lang) => a.id === b.id, showSelectAll: true });
+      comp.writeValue([{ id: 2, name: 'copy', kind: '' }]);
+      detect();
+      open();
+      document.querySelector<HTMLElement>('.ms-select-all')!.click();
+      expect(comp.selectedValues().length).toBe(3);
+      document.querySelector<HTMLElement>('.ms-select-all')!.click();
+      expect(comp.selectedValues()).toEqual([]);
     });
   });
 });

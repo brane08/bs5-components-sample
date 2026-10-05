@@ -4,6 +4,7 @@ import { By } from '@angular/platform-browser';
 import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { EMPTY, Subject, of, throwError } from 'rxjs';
 import { TagDragService } from './tag-drag.service';
+import { provideTagInputConfig } from './tag-input.config';
 import { TagInputComponent } from './tag-input.component';
 import { TagModel } from './tag-input.types';
 import { TagDropdownItemTemplate, TagTemplate } from './tag-templates';
@@ -874,6 +875,112 @@ describe('TagInputComponent', () => {
       host.querySelector<HTMLButtonElement>('.btn-close')!.click();
       await settleFixture(f);
       expect(f.componentInstance.model()).toEqual([]);
+    });
+  });
+
+  describe('reliability, announcements and config', () => {
+    it('rejects a duplicate while the first add is still validating', async () => {
+      let release!: (v: null) => void;
+      setup({ tags: [], asyncValidators: [() => new Promise(r => (release = r))] });
+      type('x');
+      key('Enter');
+      key('Enter');
+      release(null);
+      await settle();
+      expect(comp.tags()).toEqual(['x']);
+    });
+
+    it('emits nothing when destroyed while an add, removal or edit is pending', async () => {
+      const releases: ((v: null) => void)[] = [];
+      let confirm!: (t: TagModel) => void;
+      setup({ editable: true, asyncValidators: [() => new Promise(r => releases.push(r))],
+        onRemoving: (t: TagModel) => new Promise(r => (confirm = () => r(t))) });
+      const emitted = jasmine.createSpy('emitted');
+      comp.tags.subscribe(emitted);
+      const warn = spyOn(console, 'warn');
+      const adding = comp.add('c');
+      const removing = comp.remove(0);
+      chips()[1].dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      await settle();
+      const edit = el.querySelector<HTMLInputElement>('.ti-chip input')!;
+      edit.value = 'bb';
+      key('Enter', edit);
+      fixture.destroy();
+      releases.forEach(release => release(null));
+      confirm('a');
+      expect(await adding).toBeFalse();
+      expect(await removing).toBeFalse();
+      await settle();
+      expect(emitted).not.toHaveBeenCalled();
+      expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('removes the right tag when the list changes while onRemoving runs', async () => {
+      let confirm!: (t: TagModel) => void;
+      setup({ tags: ['a', 'b', 'c'], onRemoving: (t: TagModel) => new Promise(r => (confirm = () => r(t))) });
+      const removing = comp.remove(1);
+      fixture.componentRef.setInput('tags', ['z', 'a', 'b', 'c']);
+      detect();
+      confirm('b');
+      expect(await removing).toBeTrue();
+      expect(comp.tags()).toEqual(['z', 'a', 'c']);
+    });
+
+    it('does nothing when the tag disappeared while onRemoving ran', async () => {
+      let confirm!: (t: TagModel) => void;
+      setup({ tags: ['a', 'b'], onRemoving: (t: TagModel) => new Promise(r => (confirm = () => r(t))) });
+      const removing = comp.remove(1);
+      fixture.componentRef.setInput('tags', ['a']);
+      detect();
+      confirm('b');
+      expect(await removing).toBeFalse();
+      expect(comp.tags()).toEqual(['a']);
+    });
+
+    it('announces added and removed tags in a live region', async () => {
+      setup();
+      const live = () => el.querySelector('[aria-live=polite]')!.textContent!.trim();
+      expect(el.querySelector('[aria-live=polite]')!.classList).toContain('visually-hidden');
+      await enter('c');
+      expect(live()).toBe('c added');
+      await comp.remove(0);
+      detect();
+      expect(live()).toBe('a removed');
+    });
+
+    it('uses configurable labels', async () => {
+      setup({ removeTagText: 'Entfernen {label}', editTagText: 'Bearbeiten {label}', editable: true,
+        loadingText: 'Laden', autocompleteObservable: () => new Subject<TagModel[]>(), textChangeDebounce: 0 });
+      expect(el.querySelector('.btn-close')!.getAttribute('aria-label')).toBe('Entfernen a');
+      chips()[0].dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      await settle();
+      expect(el.querySelector('.ti-chip input')!.getAttribute('aria-label')).toBe('Bearbeiten a');
+    });
+
+    it('takes defaults from provideTagInputConfig', async () => {
+      TestBed.configureTestingModule({
+        providers: [provideTagInputConfig({ type: 'info', secondaryPlaceholder: 'Tags...', separatorKeys: [';'] })]
+      });
+      setup({ tags: [] });
+      expect(input().placeholder).toBe('Tags...');
+      type('q');
+      expect(key(';').defaultPrevented).toBeTrue();
+      await settle();
+      expect(comp.tags()).toEqual(['q']);
+    });
+
+    it('shows the configured loading text', () => {
+      setup({ tags: [], loadingText: 'Laden', autocompleteObservable: () => new Subject<TagModel[]>(),
+        textChangeDebounce: 0 });
+      jasmine.clock().install();
+      try {
+        type('a');
+        jasmine.clock().tick(0);
+        detect();
+        expect(el.querySelector('.dropdown-menu')!.textContent).toContain('Laden');
+      } finally {
+        jasmine.clock().uninstall();
+      }
     });
   });
 });

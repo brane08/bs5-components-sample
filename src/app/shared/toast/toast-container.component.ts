@@ -28,11 +28,10 @@ export class ToastContainerComponent {
 
   protected readonly groups = computed(() => {
     const visible = this.service.toasts().filter(t => t.toastRef.isActive());
-    const ordered = this.service.config.newestOnTop ? [...visible].reverse() : visible;
     return TOAST_POSITIONS.map(position => ({
       position,
       classes: POSITION_UTILITIES[position],
-      toasts: ordered.filter(t => t.config.positionClass === position)
+      toasts: visible.filter(t => t.config.positionClass === position)
     }));
   });
 

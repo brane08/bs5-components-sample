@@ -1,19 +1,23 @@
 import {
-  ChangeDetectionStrategy, Component, DOCUMENT, DoCheck, ElementRef, Injector, afterNextRender, booleanAttribute,
-  computed, contentChild, effect, inject, input, linkedSignal, model, numberAttribute, output, signal, viewChild
+  ChangeDetectionStrategy, Component, DOCUMENT, ElementRef, Injector, afterNextRender, booleanAttribute, computed,
+  contentChild, effect, inject, input, model, numberAttribute, output, signal, viewChild
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { ControlValueAccessor, NgControl } from '@angular/forms';
 import { CdkConnectedOverlay, ConnectedPosition } from '@angular/cdk/overlay';
 import { CdkFixedSizeVirtualScroll, CdkVirtualForOf, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { Subject, take } from 'rxjs';
-import { closeButtonTheme, resolvePath } from '../util/bs-theme';
+import { BsFormControl } from '../core/bs-form-control';
+import { ChipKeyboard } from '../core/chip-keyboard';
+import { ChipComponent } from '../core/chip.component';
+import { format } from '../core/format';
+import { resolvePath } from '../util/bs-theme';
+import { DropdownPosition, SELECT_CONFIG } from './select.config';
 import {
   SelectFooterTemplate, SelectHeaderTemplate, SelectLabelTemplate, SelectLoadingTemplate, SelectMultiLabelTemplate,
   SelectNotFoundTemplate, SelectOptgroupTemplate, SelectOptionTemplate, SelectTagTemplate, SelectTypeToSearchTemplate
 } from './select-templates';
 
-export type DropdownPosition = 'bottom' | 'top' | 'auto';
+export type { DropdownPosition } from './select.config';
 export type AddTagFn = (term: string) => any | Promise<any>;
 export type GroupByFn = (item: any) => unknown;
 export type SearchFn = (term: string, item: any) => boolean;
@@ -28,6 +32,10 @@ export type SelectRow = OptionRow | GroupRow | TagRow;
 interface Selection { value: any; item?: any }
 
 const PANEL_MAX_HEIGHT = 240;
+/** How long typed characters are combined when jumping to an option (non-searchable select). */
+const TYPE_AHEAD_RESET_MS = 500;
+/** Default compareWith; lets selection lookups use a Set instead of scanning. */
+const IDENTITY: CompareWithFn = (a, b) => a === b;
 let nextId = 0;
 
 function normalize(text: string) {
@@ -43,17 +51,22 @@ function normalize(text: string) {
   templateUrl: './multi-select.component.html',
   styleUrls: ['./multi-select.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, CdkConnectedOverlay, CdkVirtualScrollViewport, CdkFixedSizeVirtualScroll, CdkVirtualForOf],
+  imports: [
+    NgTemplateOutlet, ChipComponent, CdkConnectedOverlay, CdkVirtualScrollViewport, CdkFixedSizeVirtualScroll,
+    CdkVirtualForOf
+  ],
   host: { 'class': 'd-block position-relative' }
 })
-export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
+export class MultiSelectComponent extends BsFormControl<any> {
+  private readonly config = inject(SELECT_CONFIG);
+
   // ---- data
   readonly items = input<readonly any[] | null | undefined>([]);
   /** Property (dotted path allowed) used as label for object items. Defaults to `label`. */
   readonly bindLabel = input<string>();
   /** Property used as model value; the whole item when unset. */
   readonly bindValue = input<string>();
-  readonly compareWith = input<CompareWithFn>((a, b) => a === b);
+  readonly compareWith = input<CompareWithFn>(IDENTITY);
   readonly searchFn = input<SearchFn>();
   readonly groupBy = input<string | GroupByFn>();
   /** Clicking a group header (de)selects all its children. */
@@ -61,20 +74,19 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
 
   // ---- behaviour
   readonly multiple = input(true, { transform: booleanAttribute });
-  readonly searchable = input(true, { transform: booleanAttribute });
-  readonly clearable = input(true, { transform: booleanAttribute });
+  readonly searchable = input(this.config.searchable, { transform: booleanAttribute });
+  readonly clearable = input(this.config.clearable, { transform: booleanAttribute });
   readonly clearOnBackspace = input(true, { transform: booleanAttribute });
-  readonly clearSearchOnAdd = input(true, { transform: booleanAttribute });
+  readonly clearSearchOnAdd = input(this.config.clearSearchOnAdd, { transform: booleanAttribute });
   /** Defaults to `true` for single and `false` for multiple selection. */
   readonly closeOnSelect = input<boolean | undefined>(undefined);
   readonly hideSelected = input(false, { transform: booleanAttribute });
   /** 0 = unlimited. */
   readonly maxSelectedItems = input(0, { transform: numberAttribute });
-  readonly markFirst = input(true, { transform: booleanAttribute });
+  readonly markFirst = input(this.config.markFirst, { transform: booleanAttribute });
   readonly selectOnTab = input(false, { transform: booleanAttribute });
   readonly openOnEnter = input(true, { transform: booleanAttribute });
   readonly readonly = input(false, { transform: booleanAttribute });
-  readonly disabled = input(false, { transform: booleanAttribute });
   readonly showSelectAll = input(false, { transform: booleanAttribute });
   /** `true` adds the search term as `{[bindLabel]: term}` (or the plain string); a function may return a Promise. */
   readonly addTag = input<boolean | AddTagFn>(false);
@@ -86,22 +98,26 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
   readonly keyDownFn = input<(event: KeyboardEvent) => boolean | void>();
 
   // ---- rendering
-  readonly placeholder = input('');
-  readonly notFoundText = input('No items found');
-  readonly typeToSearchText = input('Type to search');
-  readonly addTagText = input('Add item');
-  readonly loadingText = input('Loading...');
-  readonly clearAllText = input('Clear all');
-  readonly selectAllText = input('Select all');
+  readonly placeholder = input(this.config.placeholder);
+  readonly notFoundText = input(this.config.notFoundText);
+  readonly typeToSearchText = input(this.config.typeToSearchText);
+  readonly addTagText = input(this.config.addTagText);
+  readonly loadingText = input(this.config.loadingText);
+  readonly clearAllText = input(this.config.clearAllText);
+  readonly selectAllText = input(this.config.selectAllText);
+  readonly removeItemText = input(this.config.removeItemText);
+  readonly selectedText = input(this.config.selectedText);
+  readonly deselectedText = input(this.config.deselectedText);
+  readonly clearedText = input(this.config.clearedText);
   /** Bootstrap variant for chips (`text-bg-*`). */
-  readonly type = input('secondary');
+  readonly type = input(this.config.type);
   readonly size = input<'sm' | 'lg' | undefined>();
   readonly virtualScroll = input(false, { transform: booleanAttribute });
   /** Row height in px used by virtual scroll. */
-  readonly itemSize = input(32, { transform: numberAttribute });
+  readonly itemSize = input(this.config.itemSize, { transform: numberAttribute });
   /** `'body'` renders the dropdown in a CDK overlay (escapes `overflow: hidden`, tables, modals). */
-  readonly appendTo = input<'body' | null>(null);
-  readonly dropdownPosition = input<DropdownPosition>('auto');
+  readonly appendTo = input<'body' | null>(this.config.appendTo);
+  readonly dropdownPosition = input<DropdownPosition>(this.config.dropdownPosition);
   /** Id for the inner input, so `<label for>` works. */
   readonly labelForId = input<string>();
   readonly isOpen = model(false);
@@ -133,36 +149,54 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
   protected readonly tagTpl = contentChild(SelectTagTemplate);
 
   private readonly document = inject(DOCUMENT);
-  /** Registered as value accessor here (instead of NG_VALUE_ACCESSOR) so the control state can drive `.is-invalid`. */
-  private readonly ngControl = inject(NgControl, { self: true, optional: true });
   private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly chipKeyboard = new ChipKeyboard(this.host, this.injector, {
+    removeChip: index => this.removeChipAt(index),
+    focusInput: () => this.focus()
+  });
+  private typeAheadBuffer = '';
+  private typeAheadTimer?: ReturnType<typeof setTimeout>;
   private readonly input = viewChild.required<ElementRef<HTMLInputElement>>('input');
   private readonly controlEl = viewChild.required<ElementRef<HTMLElement>>('control');
   private readonly viewport = viewChild(CdkVirtualScrollViewport);
 
   protected readonly id = `app-select-${nextId++}`;
   protected readonly listboxId = `${this.id}-listbox`;
-  protected readonly disabledState = linkedSignal(() => this.disabled());
   protected readonly searchTerm = signal('');
-  /** Bootstrap's `.is-invalid` once the bound form control is invalid and touched. */
-  protected readonly invalid = signal(false);
+  /** Text of the visually hidden live region (screen-reader announcements). */
+  protected readonly announcement = signal('');
   protected readonly markedIndex = signal(-1);
   protected readonly openAbove = signal(false);
   protected readonly overlayWidth = signal(0);
   private readonly selection = signal<Selection[]>([]);
   private readonly addedItems = signal<any[]>([]);
 
-  private onChange: (value: any) => void = () => {};
-  private onTouched: () => void = () => {};
-
   protected readonly interactive = computed(() => !this.disabledState() && !this.readonly());
-  protected readonly closeTheme = computed(() => closeButtonTheme(`text-bg-${this.type()}`));
   private readonly effectiveCloseOnSelect = computed(() => this.closeOnSelect() ?? !this.multiple());
 
   readonly allItems = computed(() => [...(this.items() ?? []), ...this.addedItems()]);
 
+  /** value -> first item with that value; only for the default (identity) compareWith. */
+  private readonly itemsByValue = computed(() => {
+    if (this.compareWith() !== IDENTITY) {
+      return null;
+    }
+    const map = new Map<unknown, any>();
+    for (const item of this.allItems()) {
+      const value = this.valueOf(item);
+      if (!map.has(value)) {
+        map.set(value, item);
+      }
+    }
+    return map;
+  });
+
   readonly selectedItems = computed(() => this.selection().map(s => s.item ?? this.findByValue(s.value) ?? s.value));
   readonly selectedValues = computed(() => this.selection().map(s => s.value));
+  /** Selected values as a Set, for O(1) lookups with the default compareWith. */
+  private readonly selectedSet = computed(() =>
+    this.compareWith() === IDENTITY ? new Set(this.selectedValues()) : null);
   protected readonly hasValue = computed(() => this.selection().length > 0);
   private readonly maxReached = computed(() =>
     this.multiple() && this.maxSelectedItems() > 0 && this.selection().length >= this.maxSelectedItems());
@@ -231,9 +265,13 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
     return rows;
   });
 
+  /** Filtered options that can be selected at all (not `disabled`). */
+  private readonly selectableItems = computed(() => this.filteredItems().filter(item => !this.isDisabledItem(item)));
+
+  /** "Select all" is checked when every selectable option is selected, or no more can be (max reached). */
   protected readonly allFilteredSelected = computed(() => {
-    const items = this.filteredItems();
-    return items.length > 0 && items.every(item => this.isSelected(item));
+    const items = this.selectableItems();
+    return items.length > 0 && (this.maxReached() || items.every(item => this.isSelected(item)));
   });
   protected readonly someFilteredSelected = computed(() =>
     !this.allFilteredSelected() && this.filteredItems().some(item => this.isSelected(item)));
@@ -255,9 +293,7 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
     Math.min(this.rows().length * this.itemSize(), PANEL_MAX_HEIGHT));
 
   constructor() {
-    if (this.ngControl) {
-      this.ngControl.valueAccessor = this;
-    }
+    super();
     // Keep a valid marked row while the list changes.
     effect(() => {
       const rows = this.rows();
@@ -269,11 +305,6 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
         this.markedIndex.set(this.markFirst() ? this.nextNavigable(-1, 1, rows) : -1);
       }
     });
-  }
-
-  ngDoCheck() {
-    const control = this.ngControl;
-    this.invalid.set(control?.invalid === true && control.touched === true);
   }
 
   // ---------------------------------------------------------------- public API (ng-select compatible)
@@ -339,6 +370,7 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
     }
     this.add.emit(item);
     this.afterChange();
+    this.announce(this.selectedText(), item);
     if (this.clearSearchOnAdd() && this.searchTerm()) {
       this.searchTerm.set('');
     }
@@ -358,6 +390,7 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
       this.selection.set(after);
       this.remove.emit(item);
       this.afterChange();
+      this.announce(this.deselectedText(), item);
     }
   }
 
@@ -370,6 +403,7 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
     if (this.hasValue()) {
       this.selection.set([]);
       this.afterChange();
+      this.announcement.set(this.clearedText());
     }
     this.clear.emit();
   }
@@ -389,8 +423,16 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
 
   isSelected(item: any): boolean {
     const value = this.valueOf(item);
+    const set = this.selectedSet();
+    if (set) {
+      return set.has(value);
+    }
     const compare = this.compareWith();
     return this.selection().some(s => compare(value, s.value));
+  }
+
+  protected removeLabel(item: any) {
+    return format(this.removeItemText(), { label: this.label(item) });
   }
 
   protected rowId(index: number) {
@@ -425,10 +467,15 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
   // ---------------------------------------------------------------- event handlers
 
   protected onControlMouseDown(event: MouseEvent) {
+    // Right/middle clicks keep their default behaviour and never toggle the panel.
+    if (event.button !== 0) {
+      return;
+    }
     if (event.target !== this.input().nativeElement) {
       event.preventDefault();
     }
-    if (!this.interactive()) {
+    // Chip remove and clear buttons handle their own click.
+    if (!this.interactive() || (event.target as HTMLElement).closest('.btn-close')) {
       return;
     }
     this.focus();
@@ -499,6 +546,29 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
           this.close();
         }
         break;
+      case 'Home':
+      case 'End':
+        if (this.isOpen()) {
+          event.preventDefault();
+          const rows = this.rows();
+          this.markRow(event.key === 'Home' ? this.nextNavigable(-1, 1, rows) : this.nextNavigable(rows.length, -1, rows));
+        }
+        break;
+      case 'PageDown':
+      case 'PageUp':
+        if (this.isOpen()) {
+          event.preventDefault();
+          this.movePage(event.key === 'PageDown' ? 1 : -1);
+        }
+        break;
+      case 'ArrowLeft': {
+        const field = event.target as HTMLInputElement;
+        if (this.multiple() && this.hasValue() && field.selectionStart === 0 && field.selectionEnd === 0) {
+          event.preventDefault();
+          this.chipKeyboard.focus(this.selection().length - 1);
+        }
+        break;
+      }
       case 'Backspace':
         if (!this.searchTerm() && this.clearable() && this.clearOnBackspace() && this.hasValue()) {
           if (this.multiple()) {
@@ -509,7 +579,15 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
           }
         }
         break;
+      default:
+        if (!this.searchable() && event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+          this.typeAhead(event.key);
+        }
     }
+  }
+
+  protected onChipKeydown(event: KeyboardEvent, index: number) {
+    this.chipKeyboard.keydown(event, index);
   }
 
   protected onRowClick(row: SelectRow, event?: Event) {
@@ -545,20 +623,15 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
     this.focus();
   }
 
-  protected onChipRemove(item: any, event: Event) {
-    event.stopPropagation();
-    this.unselect(item);
-  }
-
   protected toggleSelectAll() {
     if (!this.interactive()) {
       return;
     }
     const items = this.filteredItems();
     if (this.allFilteredSelected()) {
-      items.forEach(item => this.unselect(item));
+      this.unselectMany(items);
     } else {
-      items.filter(item => !this.isSelected(item)).forEach(item => this.select(item));
+      this.selectMany(items);
     }
   }
 
@@ -581,6 +654,7 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
   // ---------------------------------------------------------------- ControlValueAccessor
 
   writeValue(value: any): void {
+    clearTimeout(this.typeAheadTimer);
     const values = this.multiple()
       ? (Array.isArray(value) ? value : [])
       : (value == null ? [] : [value]);
@@ -595,8 +669,8 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
     this.onTouched = fn;
   }
 
-  setDisabledState(isDisabled: boolean): void {
-    this.disabledState.set(isDisabled);
+  override setDisabledState(isDisabled: boolean): void {
+    super.setDisabledState(isDisabled);
     if (isDisabled) {
       this.close();
     }
@@ -610,12 +684,78 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
   }
 
   private findByValue(value: any) {
+    const map = this.itemsByValue();
+    if (map) {
+      return map.get(value);
+    }
     const compare = this.compareWith();
     return this.allItems().find(item => compare(this.valueOf(item), value));
   }
 
+  private announce(text: string, item: any) {
+    this.announcement.set(format(text, { label: this.label(item) }));
+  }
+
+  /** Selects several items with a single model update (select all, group headers). */
+  private selectMany(items: any[]) {
+    const max = this.maxSelectedItems();
+    const additions: Selection[] = [];
+    const seen = new Set<unknown>();
+    for (const item of items) {
+      if (max > 0 && this.selection().length + additions.length >= max) {
+        break;
+      }
+      const value = this.valueOf(item);
+      if (!this.isDisabledItem(item) && !this.isSelected(item) && !seen.has(value)) {
+        seen.add(value);
+        additions.push({ value, item });
+      }
+    }
+    if (additions.length) {
+      this.selection.update(list => [...list, ...additions]);
+      additions.forEach(a => this.add.emit(a.item));
+      this.afterChange();
+      this.announcement.set(format(this.selectedText(), { label: String(additions.length) }));
+    }
+  }
+
+  /** Unselects several items with a single model update. */
+  private unselectMany(items: any[]) {
+    const compare = this.compareWith();
+    const byValue = compare === IDENTITY ? new Map(items.map(item => [this.valueOf(item), item])) : null;
+    const matchOf = (value: unknown) =>
+      byValue ? byValue.get(value) : items.find(item => compare(this.valueOf(item), value));
+    const removed: any[] = [];
+    const kept = this.selection().filter(s => {
+      const item = matchOf(s.value);
+      if (item !== undefined) {
+        removed.push(item);
+      }
+      return item === undefined;
+    });
+    if (removed.length) {
+      this.selection.set(kept);
+      removed.forEach(item => this.remove.emit(item));
+      this.afterChange();
+      this.announcement.set(format(this.deselectedText(), { label: String(removed.length) }));
+    }
+  }
+
+  private removeChipAt(index: number): boolean {
+    const item = this.selectedItems()[index];
+    if (!this.interactive() || item === undefined) {
+      return false;
+    }
+    this.unselect(item);
+    return true;
+  }
+
+  private isDisabledItem(item: any) {
+    return item != null && typeof item === 'object' && item.disabled === true;
+  }
+
   private isItemDisabled(item: any, selected: boolean) {
-    return (item != null && typeof item === 'object' && item.disabled === true) || (!selected && this.maxReached());
+    return this.isDisabledItem(item) || (!selected && this.maxReached());
   }
 
   private afterChange() {
@@ -630,9 +770,9 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
       return;
     }
     if (row.selected) {
-      row.items.forEach(item => this.unselect(item));
+      this.unselectMany(row.items);
     } else {
-      row.items.filter(item => !this.isSelected(item)).forEach(item => this.select(item));
+      this.selectMany(row.items);
     }
   }
 
@@ -677,10 +817,45 @@ export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
   }
 
   private moveMark(step: 1 | -1) {
-    const next = this.nextNavigable(this.markedIndex(), step);
-    if (next >= 0) {
-      this.markedIndex.set(next);
-      this.scrollToRow(next);
+    this.markRow(this.nextNavigable(this.markedIndex(), step));
+  }
+
+  private markRow(index: number) {
+    if (index >= 0) {
+      this.markedIndex.set(index);
+      this.scrollToRow(index);
+    }
+  }
+
+  /** PageUp/PageDown: move by one panel height of navigable rows, stopping at the ends. */
+  private movePage(step: 1 | -1) {
+    const rows = this.rows();
+    let index = this.markedIndex();
+    for (let n = Math.max(1, Math.floor(PANEL_MAX_HEIGHT / this.itemSize())); n > 0; n--) {
+      const next = this.nextNavigable(index, step, rows);
+      if (next < 0) {
+        break;
+      }
+      index = next;
+    }
+    this.markRow(index);
+  }
+
+  /** Non-searchable select: typed characters jump to the next option starting with them. */
+  private typeAhead(char: string) {
+    clearTimeout(this.typeAheadTimer);
+    this.typeAheadBuffer += char.toLowerCase();
+    this.typeAheadTimer = setTimeout(() => (this.typeAheadBuffer = ''), TYPE_AHEAD_RESET_MS);
+    this.open();
+    const rows = this.rows();
+    const start = this.typeAheadBuffer.length > 1 ? this.markedIndex() : this.markedIndex() + 1;
+    for (let i = 0; i < rows.length; i++) {
+      const index = (Math.max(start, 0) + i) % rows.length;
+      const row = rows[index];
+      if (row.kind === 'option' && !row.disabled && this.label(row.item).toLowerCase().startsWith(this.typeAheadBuffer)) {
+        this.markRow(index);
+        return;
+      }
     }
   }
 

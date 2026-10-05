@@ -21,8 +21,8 @@ describe('AppComponent', () => {
   it('renders all demos', () => {
     const el: HTMLElement = fixture.nativeElement;
     expect(el.querySelector('h1')!.textContent).toContain('Bootstrap Components');
-    expect(el.querySelectorAll('app-tag-input').length).toBe(7);
-    expect(el.querySelectorAll('app-multi-select').length).toBe(7);
+    expect(el.querySelectorAll('app-tag-input').length).toBe(8);
+    expect(el.querySelectorAll('app-multi-select').length).toBe(8);
   });
 
   it('shows toasts with the playground options and reacts to taps', () => {

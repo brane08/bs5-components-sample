@@ -3,6 +3,7 @@ import { JsonPipe } from '@angular/common';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Observable, Subject, debounceTime, delay, map, of, switchMap, tap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { FormField, form, minLength } from '@angular/forms/signals';
 import { TagInputComponent } from './shared/tag-input/tag-input.component';
 import { TagModel } from './shared/tag-input/tag-input.types';
 import { TagTemplate } from './shared/tag-input/tag-templates';
@@ -37,7 +38,7 @@ const CITIES = Array.from({ length: 10000 }, (_, i) => ({ id: i + 1, name: `City
   templateUrl: './app.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    FormsModule, ReactiveFormsModule, JsonPipe, TagInputComponent, MultiSelectComponent,
+    FormsModule, ReactiveFormsModule, FormField, JsonPipe, TagInputComponent, MultiSelectComponent,
     SelectOptionTemplate, SelectLabelTemplate, TagTemplate
   ]
 })
@@ -88,6 +89,13 @@ export class AppComponent {
     tags: [['reactive'], Validators.required],
     languages: [[2], Validators.required],
     favourite: [null as number | null, Validators.required]
+  });
+
+  // Signal Forms (experimental in Angular 21)
+  protected readonly profileModel = signal({ skills: ['Angular'] as TagModel[], languages: [3] as number[] });
+  protected readonly profile = form(this.profileModel, p => {
+    minLength(p.skills, 1);
+    minLength(p.languages, 1);
   });
 
   // Toast playground

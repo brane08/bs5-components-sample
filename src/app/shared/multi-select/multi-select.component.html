@@ -7,18 +7,14 @@
       <ng-container *ngTemplateOutlet="tpl.template; context: multiLabelContext()" />
     } @else {
       @for (item of selectedItems(); track $index) {
-        <span class="badge ms-chip d-inline-flex align-items-center gap-1 mw-100 fw-normal text-bg-{{ type() }}">
+        <app-chip class="ms-chip" [variant]="type()" [removable]="interactive()" [removeLabel]="removeLabel(item)"
+                  (remove)="unselect(item)" (keydown)="onChipKeydown($event, $index)">
           @if (labelTpl(); as tpl) {
             <ng-container *ngTemplateOutlet="tpl.template; context: labelContext(item)" />
           } @else {
-            <span class="text-truncate">{{ label(item) }}</span>
+            {{ label(item) }}
           }
-          @if (interactive()) {
-            <button type="button" class="btn-close p-0" tabindex="-1" [attr.data-bs-theme]="closeTheme()"
-                    [attr.aria-label]="'Remove ' + label(item)" (mousedown)="$event.preventDefault()"
-                    (click)="onChipRemove(item, $event)"></button>
-          }
-        </span>
+        </app-chip>
       }
     }
   } @else if (hasValue() && !searchTerm()) {
@@ -187,3 +183,6 @@
     }
   }
 </ng-template>
+
+<!-- Screen-reader announcements (Bootstrap's visually-hidden). -->
+<div class="visually-hidden" role="status" aria-live="polite">{{ announcement() }}</div>
