@@ -1,26 +1,68 @@
-<div
-  class="d-flex align-items-center border-bottom bg-white px-2 py-1 w-100"
-  [ngClass]="{ 'border rounded': editor }"
->
-  @for (item of tags; track item; let i = $index) {
-    <div class="badge bg-{{ type }} me-1">
-      <span class="me-1">{{ item }}</span>
-      <button
-        type="button"
-        class="btn-close btn-close-white"
-        [attr.aria-label]="'Remove ' + item"
-        [disabled]="disabled"
-        (click)="remove(i)"
-      ></button>
-    </div>
+<div class="ti-control d-flex flex-wrap align-items-center gap-1"
+     [class.form-control]="editor()" [class.form-control-plaintext]="!editor()"
+     [class.bg-body-secondary]="editor() && disabledState()" [class.is-invalid]="invalid() || errors().length > 0"
+     (click)="focusInput()" (dragover)="onDragOver($event)" (drop)="onDrop($event, value().length)">
+  @for (item of value(); track $index; let i = $index) {
+    <!-- Chips take focus for keyboard navigation; Bootstrap's focus-ring shows the selection. -->
+    <span class="badge ti-chip d-inline-flex align-items-center gap-1 mw-100 fw-normal focus-ring text-bg-{{ type() }}"
+          tabindex="-1" [class.opacity-50]="i === blinkIndex() || i === draggingIndex()"
+          [attr.draggable]="dragZone() && interactive() ? 'true' : null"
+          (click)="$event.stopPropagation()" (dblclick)="startEdit(i)" (focus)="selected.emit(item)"
+          (keydown)="onChipKeydown($event, i)" (dragstart)="onDragStart($event, i)" (dragend)="onDragEnd()"
+          (dragover)="onDragOver($event)" (drop)="onDrop($event, i)">
+      @if (i === editingIndex()) {
+        <input #editInput class="border-0 p-0 bg-transparent text-reset" type="text"
+               [size]="display(item).length || 1" [value]="display(item)" [attr.aria-label]="'Edit ' + display(item)"
+               (keydown)="onEditKeydown($event, i)" (blur)="commitEdit(i, editInput.value)"
+               (click)="$event.stopPropagation()">
+      } @else {
+        @if (tagTpl(); as tpl) {
+          <ng-container *ngTemplateOutlet="tpl.template; context: tagContext(item, i)" />
+        } @else {
+          <span class="text-truncate">{{ display(item) }}</span>
+        }
+        @if (canRemove()) {
+          <button type="button" class="btn-close p-0" tabindex="-1" [attr.data-bs-theme]="closeTheme()"
+                  [attr.aria-label]="'Remove ' + display(item)"
+                  (click)="remove(i); $event.stopPropagation()"></button>
+        }
+      }
+    </span>
   }
-  @if (editor && !disabled) {
-    <input
-      class="tag-input-txt w-100"
-      type="text"
-      (focusout)="commit()"
-      (keydown)="onKeydown($event)"
-      [(ngModel)]="txtModel"
-    />
+  @if (showInput()) {
+    <!-- size="1" lets the flex layout, not the input's default width, decide how wide it is. -->
+    <input #input class="ti-input flex-grow-1 border-0 p-0 bg-transparent text-body" type="text" size="1"
+           autocomplete="off" [class]="inputClass()" [id]="inputId() ?? id + '-input'"
+           [attr.tabindex]="tabindex() ?? null" [attr.role]="hasAutocomplete() ? 'combobox' : null"
+           [attr.aria-expanded]="hasAutocomplete() ? dropdownVisible() : null"
+           [attr.aria-controls]="dropdownVisible() ? listboxId : null" [attr.aria-activedescendant]="activeId()"
+           [placeholder]="placeholderText()" [value]="inputText()"
+           (input)="onInput($event)" (keydown)="onInputKeydown($event)" (focus)="onFocus()" (blur)="onBlur()"
+           (paste)="onPaste($event)">
   }
 </div>
+
+@if (dropdownVisible()) {
+  <div class="dropdown-menu show ti-dropdown w-100 mt-1 top-100 start-0 overflow-y-auto" role="listbox"
+       [id]="listboxId" (mousedown)="$event.preventDefault()">
+    @if (loading() && !suggestions().length) {
+      <div class="dropdown-item-text d-flex align-items-center text-body-secondary">
+        <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading...
+      </div>
+    }
+    @for (item of suggestions(); track $index; let i = $index) {
+      <div class="dropdown-item" role="option" [id]="optionId(i)" [class.bg-body-tertiary]="i === activeIndex()"
+           [attr.aria-selected]="i === activeIndex()" (click)="selectSuggestion(item)" (mouseenter)="activeIndex.set(i)">
+        @if (dropdownItemTpl(); as tpl) {
+          <ng-container *ngTemplateOutlet="tpl.template; context: dropdownItemContext(item, i)" />
+        } @else {
+          {{ display(item) }}
+        }
+      </div>
+    }
+  </div>
+}
+
+@for (message of errors(); track message) {
+  <div class="invalid-feedback d-block">{{ message }}</div>
+}

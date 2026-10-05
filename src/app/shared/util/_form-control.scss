@@ -1,0 +1,23 @@
+@use 'bootstrap' as bs;
+
+/// Bootstrap styles `.form-control:focus` / `.form-select:focus`, but in composite controls (chips + input) the focus
+/// sits on an inner borderless <input>. This mirrors Bootstrap's own focus and invalid-focus states via :focus-within,
+/// using Bootstrap's variables so theming stays in sync.
+@mixin focus-within {
+  &:focus-within {
+    border-color: bs.$input-focus-border-color;
+    outline: 0;
+    box-shadow: bs.$input-focus-box-shadow;
+  }
+
+  &.is-invalid:focus-within {
+    border-color: var(--#{bs.$prefix}form-invalid-border-color);
+    box-shadow: 0 0 bs.$input-btn-focus-blur bs.$input-focus-width
+      rgba(var(--#{bs.$prefix}danger-rgb), bs.$input-btn-focus-color-opacity);
+  }
+
+  // The container shows the focus ring, so the inner input must not draw its own outline.
+  input:focus {
+    outline: 0;
+  }
+}
