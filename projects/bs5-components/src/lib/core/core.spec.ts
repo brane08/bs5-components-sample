@@ -13,8 +13,14 @@ describe('format', () => {
 describe('ChipComponent', () => {
   @Component({
     imports: [ChipComponent],
-    template: `<app-chip class="extra" [variant]="variant()" [removable]="removable()" removeLabel="Drop it"
-                         (remove)="removed = removed + 1">Label</app-chip>`
+    template: `<app-chip
+      class="extra"
+      [variant]="variant()"
+      [removable]="removable()"
+      removeLabel="Drop it"
+      (remove)="removed = removed + 1"
+      >Label</app-chip
+    >`,
   })
   class Host {
     variant = signal('primary');
@@ -35,9 +41,12 @@ describe('ChipComponent', () => {
     const button = chip.querySelector('button')!;
     expect(button.getAttribute('aria-label')).toBe('Drop it');
     expect(button.getAttribute('data-bs-theme')).toBe('dark');
-    const down = new MouseEvent('mousedown', { cancelable: true, bubbles: true });
+    const down = new MouseEvent('mousedown', {
+      cancelable: true,
+      bubbles: true,
+    });
     button.dispatchEvent(down);
-    expect(down.defaultPrevented).toBeTrue();
+    expect(down.defaultPrevented).toBe(true);
     button.click();
     expect(f.componentInstance.removed).toBe(1);
     f.componentInstance.variant.set('light');

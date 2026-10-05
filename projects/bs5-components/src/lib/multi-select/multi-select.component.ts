@@ -1,12 +1,13 @@
 import {
-  ChangeDetectionStrategy, Component, DOCUMENT, ElementRef, Injector, afterNextRender, booleanAttribute, computed,
-  contentChild, effect, inject, input, model, numberAttribute, output, signal, viewChild
+  ChangeDetectionStrategy, Component, DOCUMENT, DoCheck, ElementRef, Injector, afterNextRender, booleanAttribute,
+  computed, contentChild, effect, inject, input, linkedSignal, model, numberAttribute, output, signal, viewChild
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { ControlValueAccessor } from '@angular/forms';
 import { CdkConnectedOverlay, ConnectedPosition } from '@angular/cdk/overlay';
 import { CdkFixedSizeVirtualScroll, CdkVirtualForOf, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { Subject, take } from 'rxjs';
-import { BsFormControl } from '../core/bs-form-control';
+import { FormControlBridge } from '../core/form-control-bridge';
 import { ChipKeyboard } from '../core/chip-keyboard';
 import { ChipComponent } from '../core/chip.component';
 import { format } from '../core/format';
@@ -57,8 +58,9 @@ function normalize(text: string) {
   ],
   host: { 'class': 'd-block position-relative' }
 })
-export class MultiSelectComponent extends BsFormControl<any> {
+export class MultiSelectComponent implements ControlValueAccessor, DoCheck {
   private readonly config = inject(SELECT_CONFIG);
+  private readonly form = new FormControlBridge<any>(this);
 
   // ---- data
   readonly items = input<readonly any[] | null | undefined>([]);
@@ -87,6 +89,7 @@ export class MultiSelectComponent extends BsFormControl<any> {
   readonly selectOnTab = input(false, { transform: booleanAttribute });
   readonly openOnEnter = input(true, { transform: booleanAttribute });
   readonly readonly = input(false, { transform: booleanAttribute });
+  readonly disabled = input(false, { transform: booleanAttribute });
   readonly showSelectAll = input(false, { transform: booleanAttribute });
   /** `true` adds the search term as `{[bindLabel]: term}` (or the plain string); a function may return a Promise. */
   readonly addTag = input<boolean | AddTagFn>(false);
@@ -163,6 +166,9 @@ export class MultiSelectComponent extends BsFormControl<any> {
 
   protected readonly id = `app-select-${nextId++}`;
   protected readonly listboxId = `${this.id}-listbox`;
+  protected readonly disabledState = linkedSignal(() => this.disabled());
+  /** Bootstrap's `.is-invalid` once the bound form control is invalid and touched. */
+  protected readonly invalid = this.form.invalid;
   protected readonly searchTerm = signal('');
   /** Text of the visually hidden live region (screen-reader announcements). */
   protected readonly announcement = signal('');
@@ -268,10 +274,14 @@ export class MultiSelectComponent extends BsFormControl<any> {
   /** Filtered options that can be selected at all (not `disabled`). */
   private readonly selectableItems = computed(() => this.filteredItems().filter(item => !this.isDisabledItem(item)));
 
-  /** "Select all" is checked when every selectable option is selected, or no more can be (max reached). */
+  /**
+   * "Select all" is checked when every selectable option is selected, or when no more can be selected (max reached)
+   * and at least one of them is.
+   */
   protected readonly allFilteredSelected = computed(() => {
     const items = this.selectableItems();
-    return items.length > 0 && (this.maxReached() || items.every(item => this.isSelected(item)));
+    const selected = items.filter(item => this.isSelected(item)).length;
+    return selected > 0 && (selected === items.length || this.maxReached());
   });
   protected readonly someFilteredSelected = computed(() =>
     !this.allFilteredSelected() && this.filteredItems().some(item => this.isSelected(item)));
@@ -293,7 +303,6 @@ export class MultiSelectComponent extends BsFormControl<any> {
     Math.min(this.rows().length * this.itemSize(), PANEL_MAX_HEIGHT));
 
   constructor() {
-    super();
     // Keep a valid marked row while the list changes.
     effect(() => {
       const rows = this.rows();
@@ -305,6 +314,10 @@ export class MultiSelectComponent extends BsFormControl<any> {
         this.markedIndex.set(this.markFirst() ? this.nextNavigable(-1, 1, rows) : -1);
       }
     });
+  }
+
+  ngDoCheck() {
+    this.form.check();
   }
 
   // ---------------------------------------------------------------- public API (ng-select compatible)
@@ -500,7 +513,7 @@ export class MultiSelectComponent extends BsFormControl<any> {
 
   protected onBlur(event: FocusEvent) {
     this.close();
-    this.onTouched();
+    this.form.onTouched();
     this.blurEvent.emit(event);
   }
 
@@ -662,15 +675,15 @@ export class MultiSelectComponent extends BsFormControl<any> {
   }
 
   registerOnChange(fn: (value: any) => void): void {
-    this.onChange = fn;
+    this.form.onChange = fn;
   }
 
   registerOnTouched(fn: () => void): void {
-    this.onTouched = fn;
+    this.form.onTouched = fn;
   }
 
-  override setDisabledState(isDisabled: boolean): void {
-    super.setDisabledState(isDisabled);
+  setDisabledState(isDisabled: boolean): void {
+    this.disabledState.set(isDisabled);
     if (isDisabled) {
       this.close();
     }
@@ -733,12 +746,11 @@ export class MultiSelectComponent extends BsFormControl<any> {
       }
       return item === undefined;
     });
-    if (removed.length) {
-      this.selection.set(kept);
-      removed.forEach(item => this.remove.emit(item));
-      this.afterChange();
-      this.announcement.set(format(this.deselectedText(), { label: String(removed.length) }));
-    }
+    // Only called when at least one of `items` is selected ("select all" checked or a selected group).
+    this.selection.set(kept);
+    removed.forEach(item => this.remove.emit(item));
+    this.afterChange();
+    this.announcement.set(format(this.deselectedText(), { label: String(removed.length) }));
   }
 
   private removeChipAt(index: number): boolean {
@@ -761,7 +773,7 @@ export class MultiSelectComponent extends BsFormControl<any> {
   private afterChange() {
     const items = this.selectedItems();
     const values = this.selectedValues();
-    this.onChange(this.multiple() ? values : (values[0] ?? null));
+    this.form.onChange(this.multiple() ? values : (values[0] ?? null));
     this.change.emit(this.multiple() ? items : (items[0] ?? null));
   }
 

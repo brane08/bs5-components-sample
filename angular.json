@@ -87,28 +87,84 @@
           }
         },
         "test": {
-          "builder": "@angular/build:karma",
+          "builder": "@angular/build:unit-test",
           "options": {
-            "main": "src/test.ts",
+            "runner": "vitest",
+            "browsers": [
+              "chromium"
+            ],
+            "headless": true,
+            "coverage": true,
+            "coverageReporters": [
+              "html",
+              "lcovonly",
+              "text-summary"
+            ],
+            "coverageThresholds": {
+              "statements": 100,
+              "branches": 100,
+              "functions": 100,
+              "lines": 100
+            },
             "tsConfig": "tsconfig.spec.json",
-            "karmaConfig": "karma.conf.js",
-            "inlineStyleLanguage": "scss",
-            "assets": [
-              "src/favicon.ico",
-              "src/assets"
+            "providersFile": "src/test-providers.ts",
+            "coverageInclude": [
+              "src/app/**/*.ts"
             ],
-            "styles": [
-              "src/styles.scss"
-            ],
-            "scripts": [],
-            "codeCoverage": true,
-            "stylePreprocessorOptions": {
-              "sass": {
-                "silenceDeprecations": [
-                  "import"
-                ]
-              }
+            "setupFiles": [
+              "src/test-setup.ts"
+            ]
+          }
+        }
+      }
+    },
+    "bs5-components": {
+      "projectType": "library",
+      "root": "projects/bs5-components",
+      "sourceRoot": "projects/bs5-components/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:ng-packagr",
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/bs5-components/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/bs5-components/tsconfig.lib.json"
             }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "runner": "vitest",
+            "browsers": [
+              "chromium"
+            ],
+            "headless": true,
+            "coverage": true,
+            "coverageReporters": [
+              "html",
+              "lcovonly",
+              "text-summary"
+            ],
+            "coverageThresholds": {
+              "statements": 100,
+              "branches": 100,
+              "functions": 100,
+              "lines": 100
+            },
+            "buildTarget": "bs5-components-sample:build:development",
+            "tsConfig": "projects/bs5-components/tsconfig.spec.json",
+            "providersFile": "projects/bs5-components/src/test-providers.ts",
+            "coverageInclude": [
+              "projects/bs5-components/src/lib/**/*.ts"
+            ],
+            "setupFiles": [
+              "projects/bs5-components/src/test-setup.ts"
+            ]
           }
         }
       }

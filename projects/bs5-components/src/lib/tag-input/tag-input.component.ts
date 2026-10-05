@@ -1,11 +1,11 @@
 import {
-  ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, afterNextRender, booleanAttribute, computed,
-  contentChild, inject, input, linkedSignal, model, numberAttribute, output, signal, viewChild
+  ChangeDetectionStrategy, Component, DestroyRef, DoCheck, ElementRef, Injector, afterNextRender, booleanAttribute,
+  computed, contentChild, inject, input, linkedSignal, model, numberAttribute, output, signal, viewChild
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { AsyncValidatorFn, FormControl, ValidatorFn, Validators } from '@angular/forms';
+import { AsyncValidatorFn, ControlValueAccessor, FormControl, ValidatorFn, Validators } from '@angular/forms';
 import { Observable, Subscription, firstValueFrom, from, isObservable } from 'rxjs';
-import { BsFormControl } from '../core/bs-form-control';
+import { FormControlBridge } from '../core/form-control-bridge';
 import { ChipKeyboard } from '../core/chip-keyboard';
 import { ChipComponent } from '../core/chip.component';
 import { format } from '../core/format';
@@ -30,8 +30,9 @@ let nextId = 0;
   imports: [NgTemplateOutlet, ChipComponent],
   host: { 'class': 'd-block position-relative' }
 })
-export class TagInputComponent extends BsFormControl<TagModel[]> {
+export class TagInputComponent implements ControlValueAccessor, DoCheck {
   private readonly config = inject(TAG_INPUT_CONFIG);
+  private readonly form = new FormControlBridge<TagModel[]>(this);
 
   // ---- model
   readonly tags = model<TagModel[]>([]);
@@ -72,6 +73,7 @@ export class TagInputComponent extends BsFormControl<TagModel[]> {
   // ---- rendering
   /** `false` renders the tags read-only without a border. */
   readonly editor = input(true, { transform: booleanAttribute });
+  readonly disabled = input(false, { transform: booleanAttribute });
   /** Hides the text input; tags can still be removed. */
   readonly hideForm = input(false, { transform: booleanAttribute });
   /** Bootstrap variant for chips (`text-bg-*`). */
@@ -125,6 +127,9 @@ export class TagInputComponent extends BsFormControl<TagModel[]> {
   protected readonly listboxId = `${this.id}-listbox`;
   /** Current tags; follows `[tags]` and is also written by the forms API without emitting `tagsChange`. */
   protected readonly value = linkedSignal(() => this.tags());
+  protected readonly disabledState = linkedSignal(() => this.disabled());
+  /** Bootstrap's `.is-invalid` once the bound form control is invalid and touched. */
+  protected readonly invalid = this.form.invalid;
   protected readonly errors = signal<string[]>([]);
   protected readonly blinkIndex = signal(-1);
   protected readonly editingIndex = signal(-1);
@@ -191,12 +196,15 @@ export class TagInputComponent extends BsFormControl<TagModel[]> {
     this.dropdownVisible() && this.activeIndex() >= 0 ? this.optionId(this.activeIndex()) : null);
 
   constructor() {
-    super();
     inject(DestroyRef).onDestroy(() => {
       this.destroyed = true;
       clearTimeout(this.textTimer);
       this.fetchSub?.unsubscribe();
     });
+  }
+
+  ngDoCheck() {
+    this.form.check();
   }
 
   // ---------------------------------------------------------------- public API
@@ -367,7 +375,7 @@ export class TagInputComponent extends BsFormControl<TagModel[]> {
     } else if (this.clearOnBlur()) {
       this.clearText();
     }
-    this.onTouched();
+    this.form.onTouched();
     this.blurred.emit(text);
   }
 
@@ -510,6 +518,18 @@ export class TagInputComponent extends BsFormControl<TagModel[]> {
     this.value.set(Array.isArray(value) ? [...value] : []);
   }
 
+  registerOnChange(fn: (value: TagModel[]) => void): void {
+    this.form.onChange = fn;
+  }
+
+  registerOnTouched(fn: () => void): void {
+    this.form.onTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.disabledState.set(isDisabled);
+  }
+
   // ---------------------------------------------------------------- internals
 
   private acceptsDrop() {
@@ -520,7 +540,7 @@ export class TagInputComponent extends BsFormControl<TagModel[]> {
   private update(tags: TagModel[]) {
     this.value.set(tags);
     this.tags.set(tags);
-    this.onChange(tags);
+    this.form.onChange(tags);
   }
 
   private announce(text: string, tag: TagModel) {

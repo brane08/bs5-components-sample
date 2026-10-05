@@ -16,11 +16,13 @@
   "license": "MIT",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test",
-    "test:ci": "ng test --watch=false --browsers=ChromeHeadlessCI"
+    "start": "ng serve bs5-components-sample",
+    "build": "ng build bs5-components-sample",
+    "watch": "ng build bs5-components-sample --watch --configuration development",
+    "test": "ng test bs5-components",
+    "test:ci": "ng test bs5-components --watch=false && ng test bs5-components-sample --watch=false",
+    "build:lib": "ng build bs5-components",
+    "test:app": "ng test bs5-components-sample"
   },
   "dependencies": {
     "@angular/cdk": "^21.2.14",
@@ -38,14 +40,13 @@
     "@angular/build": "^21.2.25",
     "@angular/cli": "^21.2.25",
     "@angular/compiler-cli": "^21.2.25",
-    "@types/jasmine": "~5.1.0",
     "@types/node": "^20.10.0",
-    "jasmine-core": "~5.9.0",
-    "karma": "~6.4.0",
-    "karma-chrome-launcher": "~3.2.0",
-    "karma-coverage": "~2.2.0",
-    "karma-jasmine": "~5.1.0",
-    "karma-jasmine-html-reporter": "~2.1.0",
-    "typescript": "~5.9.3"
+    "@vitest/browser-playwright": "^4.1.11",
+    "@vitest/coverage-v8": "^4.1.11",
+    "ng-packagr": "^21.2.0",
+    "playwright": "~1.56.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.11"
   }
 }

@@ -3,13 +3,11 @@ import { JsonPipe } from '@angular/common';
 import { FormsModule, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Observable, Subject, debounceTime, delay, map, of, switchMap, tap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
+import {
+  MultiSelectComponent, SelectLabelTemplate, SelectOptionTemplate, TOAST_POSITIONS, TagInputComponent, TagModel,
+  TagTemplate, ToastPositionClass, ToastService
+} from 'bs5-components';
 import { FormField, form, minLength } from '@angular/forms/signals';
-import { TagInputComponent } from './shared/tag-input/tag-input.component';
-import { TagModel } from './shared/tag-input/tag-input.types';
-import { TagTemplate } from './shared/tag-input/tag-templates';
-import { MultiSelectComponent } from './shared/multi-select/multi-select.component';
-import { SelectLabelTemplate, SelectOptionTemplate } from './shared/multi-select/select-templates';
-import { ToastPositionClass, TOAST_POSITIONS, ToastService } from './shared/toast';
 
 interface Language {
   id: number;

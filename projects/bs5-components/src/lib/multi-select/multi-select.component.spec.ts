@@ -7,9 +7,17 @@ import { Subject } from 'rxjs';
 import { MultiSelectComponent } from './multi-select.component';
 import { provideSelectConfig } from './select.config';
 import {
-  SELECT_TEMPLATES, SelectFooterTemplate, SelectHeaderTemplate, SelectLabelTemplate, SelectLoadingTemplate,
-  SelectMultiLabelTemplate, SelectNotFoundTemplate, SelectOptgroupTemplate, SelectOptionTemplate, SelectTagTemplate,
-  SelectTypeToSearchTemplate
+  SELECT_TEMPLATES,
+  SelectFooterTemplate,
+  SelectHeaderTemplate,
+  SelectLabelTemplate,
+  SelectLoadingTemplate,
+  SelectMultiLabelTemplate,
+  SelectNotFoundTemplate,
+  SelectOptgroupTemplate,
+  SelectOptionTemplate,
+  SelectTagTemplate,
+  SelectTypeToSearchTemplate,
 } from './select-templates';
 
 interface Lang {
@@ -23,7 +31,7 @@ const LANGS: Lang[] = [
   { id: 1, name: 'Java', kind: 'Static' },
   { id: 2, name: 'Python', kind: 'Dynamic' },
   { id: 3, name: 'TypeScript', kind: 'Static' },
-  { id: 4, name: 'Café', kind: 'Dynamic', disabled: true }
+  { id: 4, name: 'Café', kind: 'Dynamic', disabled: true },
 ];
 
 describe('MultiSelectComponent', () => {
@@ -33,11 +41,21 @@ describe('MultiSelectComponent', () => {
 
   const input = () => el.querySelector<HTMLInputElement>('input.ms-input')!;
   const control = () => el.querySelector<HTMLElement>('.ms-control')!;
-  const rowEls = () => Array.from(document.querySelectorAll<HTMLElement>('.ms-panel .dropdown-item, .ms-panel .dropdown-header'))
-    .filter(r => !r.classList.contains('ms-select-all'));
-  const optionEls = () => Array.from(document.querySelectorAll<HTMLElement>('.ms-panel [role=option]'));
-  const optionTexts = () => optionEls().map(o => o.textContent!.trim());
-  const chips = () => Array.from(el.querySelectorAll('.ms-chip')).map(c => c.textContent!.trim());
+  const rowEls = () =>
+    Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '.ms-panel .dropdown-item, .ms-panel .dropdown-header',
+      ),
+    ).filter((r) => !r.classList.contains('ms-select-all'));
+  const optionEls = () =>
+    Array.from(
+      document.querySelectorAll<HTMLElement>('.ms-panel [role=option]'),
+    );
+  const optionTexts = () => optionEls().map((o) => o.textContent!.trim());
+  const chips = () =>
+    Array.from(el.querySelectorAll('.ms-chip')).map((c) =>
+      c.textContent!.trim(),
+    );
   const panel = () => document.querySelector<HTMLElement>('.ms-panel');
   const marked = () => document.querySelector<HTMLElement>('.ms-marked');
   const detect = () => fixture.detectChanges();
@@ -55,7 +73,11 @@ describe('MultiSelectComponent', () => {
   }
 
   function key(k: string, render = true) {
-    const event = new KeyboardEvent('keydown', { key: k, cancelable: true, bubbles: true });
+    const event = new KeyboardEvent('keydown', {
+      key: k,
+      cancelable: true,
+      bubbles: true,
+    });
     input().dispatchEvent(event);
     if (render) {
       detect();
@@ -64,7 +86,12 @@ describe('MultiSelectComponent', () => {
   }
 
   function keyOn(target: HTMLElement, k: string, init: KeyboardEventInit = {}) {
-    const event = new KeyboardEvent('keydown', { key: k, cancelable: true, bubbles: true, ...init });
+    const event = new KeyboardEvent('keydown', {
+      key: k,
+      cancelable: true,
+      bubbles: true,
+      ...init,
+    });
     target.dispatchEvent(event);
     detect();
     return event;
@@ -77,7 +104,10 @@ describe('MultiSelectComponent', () => {
   }
 
   function mousedown(target: HTMLElement = control()) {
-    const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+    const event = new MouseEvent('mousedown', {
+      bubbles: true,
+      cancelable: true,
+    });
     target.dispatchEvent(event);
     detect();
     return event;
@@ -89,7 +119,9 @@ describe('MultiSelectComponent', () => {
   }
 
   function clickRow(text: string) {
-    rowEls().find(r => r.textContent!.trim() === text)!.click();
+    rowEls()
+      .find((r) => r.textContent!.trim() === text)!
+      .click();
     detect();
   }
 
@@ -129,7 +161,9 @@ describe('MultiSelectComponent', () => {
       expect(input().getAttribute('aria-expanded')).toBe('true');
       const listbox = document.querySelector('[role=listbox]')!;
       expect(input().getAttribute('aria-controls')).toBe(listbox.id);
-      expect(input().getAttribute('aria-activedescendant')).toBe(optionEls()[0].id);
+      expect(input().getAttribute('aria-activedescendant')).toBe(
+        optionEls()[0].id,
+      );
       expect(listbox.getAttribute('aria-multiselectable')).toBe('true');
     });
 
@@ -143,18 +177,18 @@ describe('MultiSelectComponent', () => {
     beforeEach(() => setup());
 
     it('toggles on control mousedown and keeps focus on the input', () => {
-      const opened = jasmine.createSpy('open');
-      const closed = jasmine.createSpy('close');
+      const opened = vi.fn();
+      const closed = vi.fn();
       fixture.componentRef.instance.openEvent.subscribe(opened);
       fixture.componentRef.instance.closeEvent.subscribe(closed);
       const event = mousedown();
-      expect(event.defaultPrevented).toBeTrue();
-      expect(comp.isOpen()).toBeTrue();
+      expect(event.defaultPrevented).toBe(true);
+      expect(comp.isOpen()).toBe(true);
       expect(opened).toHaveBeenCalledTimes(1);
       mousedown();
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
       expect(closed).toHaveBeenCalledTimes(1);
-      expect(mousedown(input()).defaultPrevented).toBeFalse();
+      expect(mousedown(input()).defaultPrevented).toBe(false);
     });
 
     it('open/close/toggle are idempotent', () => {
@@ -162,25 +196,25 @@ describe('MultiSelectComponent', () => {
       comp.open();
       comp.toggle();
       comp.close();
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
       comp.toggle();
-      expect(comp.isOpen()).toBeTrue();
+      expect(comp.isOpen()).toBe(true);
     });
 
     it('closes and clears the search on blur, marking the control touched', () => {
-      const blur = jasmine.createSpy('blur');
-      const focus = jasmine.createSpy('focus');
+      const blur = vi.fn();
+      const focus = vi.fn();
       comp.blurEvent.subscribe(blur);
       comp.focusEvent.subscribe(focus);
-      const touched = jasmine.createSpy('touched');
+      const touched = vi.fn();
       comp.registerOnTouched(touched);
       input().dispatchEvent(new FocusEvent('focus'));
       detect();
       type('ja');
-      expect(comp.isOpen()).toBeTrue();
+      expect(comp.isOpen()).toBe(true);
       input().dispatchEvent(new FocusEvent('blur'));
       detect();
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
       expect(input().value).toBe('');
       expect(touched).toHaveBeenCalled();
       expect(focus).toHaveBeenCalled();
@@ -192,12 +226,12 @@ describe('MultiSelectComponent', () => {
       open();
       expect(comp.allItems()).toEqual([]);
       input().dispatchEvent(new FocusEvent('blur'));
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
     });
 
     it('focus() and blur() delegate to the input', () => {
-      const focus = spyOn(input(), 'focus');
-      const blur = spyOn(input(), 'blur');
+      const focus = vi.spyOn(input(), 'focus');
+      const blur = vi.spyOn(input(), 'blur');
       comp.focus();
       comp.blur();
       expect(focus).toHaveBeenCalled();
@@ -206,9 +240,12 @@ describe('MultiSelectComponent', () => {
 
     it('prevents blur when pressing inside the panel', () => {
       open();
-      const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+      const event = new MouseEvent('mousedown', {
+        bubbles: true,
+        cancelable: true,
+      });
       panel()!.dispatchEvent(event);
-      expect(event.defaultPrevented).toBeTrue();
+      expect(event.defaultPrevented).toBe(true);
     });
   });
 
@@ -216,10 +253,10 @@ describe('MultiSelectComponent', () => {
     beforeEach(() => setup({ bindValue: 'id' }));
 
     it('selects and unselects with clicks, emitting outputs and the model value', () => {
-      const onChange = jasmine.createSpy('onChange');
-      const add = jasmine.createSpy('add');
-      const remove = jasmine.createSpy('remove');
-      const change = jasmine.createSpy('change');
+      const onChange = vi.fn();
+      const add = vi.fn();
+      const remove = vi.fn();
+      const change = vi.fn();
       comp.registerOnChange(onChange);
       comp.add.subscribe(add);
       comp.remove.subscribe(remove);
@@ -231,8 +268,10 @@ describe('MultiSelectComponent', () => {
       expect(add).toHaveBeenCalledWith(LANGS[0]);
       expect(change).toHaveBeenCalledWith([LANGS[0], LANGS[2]]);
       expect(chips()).toEqual(['Java', 'TypeScript']);
-      expect(comp.isOpen()).toBeTrue();
-      expect(optionEls()[0].querySelector<HTMLInputElement>('input')!.checked).toBeTrue();
+      expect(comp.isOpen()).toBe(true);
+      expect(
+        optionEls()[0].querySelector<HTMLInputElement>('input')!.checked,
+      ).toBe(true);
       clickRow('Java');
       expect(remove).toHaveBeenCalledWith(LANGS[0]);
       expect(onChange).toHaveBeenCalledWith([3]);
@@ -268,22 +307,24 @@ describe('MultiSelectComponent', () => {
       fixture.componentRef.setInput('closeOnSelect', true);
       open();
       clickRow('Java');
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
     });
 
     it('removes chips and clears all', () => {
-      const clear = jasmine.createSpy('clear');
+      const clear = vi.fn();
       comp.clear.subscribe(clear);
       comp.writeValue([1, 2]);
       detect();
-      const chipClose = el.querySelector<HTMLButtonElement>('.ms-chip .btn-close')!;
+      const chipClose = el.querySelector<HTMLButtonElement>(
+        '.ms-chip .btn-close',
+      )!;
       expect(chipClose.getAttribute('data-bs-theme')).toBe('dark');
-      expect(mousedown(chipClose).defaultPrevented).toBeTrue();
+      expect(mousedown(chipClose).defaultPrevented).toBe(true);
       chipClose.click();
       detect();
       expect(chips()).toEqual(['Python']);
       const clearButton = el.querySelector<HTMLButtonElement>('.ms-clear')!;
-      expect(mousedown(clearButton).defaultPrevented).toBeTrue();
+      expect(mousedown(clearButton).defaultPrevented).toBe(true);
       clearButton.click();
       detect();
       expect(chips()).toEqual([]);
@@ -292,7 +333,7 @@ describe('MultiSelectComponent', () => {
     });
 
     it('clearModel without a value only clears the search', () => {
-      const onChange = jasmine.createSpy('onChange');
+      const onChange = vi.fn();
       comp.registerOnChange(onChange);
       type('ja');
       comp.clearModel();
@@ -301,7 +342,7 @@ describe('MultiSelectComponent', () => {
     });
 
     it('unselect of an unselected item is a no-op', () => {
-      const remove = jasmine.createSpy('remove');
+      const remove = vi.fn();
       comp.remove.subscribe(remove);
       comp.unselect(LANGS[0]);
       expect(remove).not.toHaveBeenCalled();
@@ -311,8 +352,12 @@ describe('MultiSelectComponent', () => {
       fixture.componentRef.setInput('type', 'warning');
       comp.writeValue([1]);
       detect();
-      expect(el.querySelector('.ms-chip')!.className).toContain('text-bg-warning');
-      expect(el.querySelector('.ms-chip .btn-close')!.getAttribute('data-bs-theme')).toBeNull();
+      expect(el.querySelector('.ms-chip')!.className).toContain(
+        'text-bg-warning',
+      );
+      expect(
+        el.querySelector('.ms-chip .btn-close')!.getAttribute('data-bs-theme'),
+      ).toBeNull();
     });
   });
 
@@ -320,16 +365,18 @@ describe('MultiSelectComponent', () => {
     beforeEach(() => setup({ multiple: false }));
 
     it('replaces the value, closes and shows the label', () => {
-      const onChange = jasmine.createSpy('onChange');
-      const change = jasmine.createSpy('change');
+      const onChange = vi.fn();
+      const change = vi.fn();
       comp.registerOnChange(onChange);
       comp.change.subscribe(change);
       open();
       clickRow('Java');
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
       expect(onChange).toHaveBeenCalledWith(LANGS[0]);
       expect(change).toHaveBeenCalledWith(LANGS[0]);
-      expect(el.querySelector('.ms-single-value')!.textContent!.trim()).toBe('Java');
+      expect(el.querySelector('.ms-single-value')!.textContent!.trim()).toBe(
+        'Java',
+      );
       expect(input().classList).not.toContain('flex-grow-1');
       open();
       expect(optionEls()[0].classList).toContain('active');
@@ -352,7 +399,7 @@ describe('MultiSelectComponent', () => {
   describe('search', () => {
     it('filters case and accent insensitively and emits search', () => {
       setup();
-      const search = jasmine.createSpy('search');
+      const search = vi.fn();
       comp.search.subscribe(search);
       type('CAFE');
       expect(optionTexts()).toEqual(['Café']);
@@ -360,7 +407,9 @@ describe('MultiSelectComponent', () => {
     });
 
     it('uses a custom searchFn', () => {
-      setup({ searchFn: (term: string, item: Lang) => item.kind.startsWith(term) });
+      setup({
+        searchFn: (term: string, item: Lang) => item.kind.startsWith(term),
+      });
       type('Dyn');
       expect(optionTexts()).toEqual(['Python', 'Café']);
     });
@@ -386,7 +435,7 @@ describe('MultiSelectComponent', () => {
       setup();
       comp.filter('type');
       detect();
-      expect(comp.isOpen()).toBeTrue();
+      expect(comp.isOpen()).toBe(true);
       expect(optionTexts()).toEqual(['TypeScript']);
     });
   });
@@ -398,7 +447,7 @@ describe('MultiSelectComponent', () => {
     beforeEach(() => {
       term$ = new Subject<string>();
       terms = [];
-      term$.subscribe(t => terms.push(t));
+      term$.subscribe((t) => terms.push(t));
       setup({ typeahead: term$, minTermLength: 2, items: [] });
     });
 
@@ -439,7 +488,7 @@ describe('MultiSelectComponent', () => {
     it('navigates, skips disabled rows and selects with Enter', () => {
       setup();
       key('ArrowDown');
-      expect(comp.isOpen()).toBeTrue();
+      expect(comp.isOpen()).toBe(true);
       expect(marked()!.textContent!.trim()).toBe('Java');
       key('ArrowDown');
       key('ArrowDown');
@@ -447,20 +496,20 @@ describe('MultiSelectComponent', () => {
       expect(marked()!.textContent!.trim()).toBe('TypeScript');
       key('ArrowUp');
       expect(marked()!.textContent!.trim()).toBe('Python');
-      expect(key('Enter').defaultPrevented).toBeTrue();
+      expect(key('Enter').defaultPrevented).toBe(true);
       expect(comp.selectedItems()).toEqual([LANGS[1]]);
     });
 
     it('ArrowUp does nothing while closed', () => {
       setup();
-      expect(key('ArrowUp').defaultPrevented).toBeTrue();
-      expect(comp.isOpen()).toBeFalse();
+      expect(key('ArrowUp').defaultPrevented).toBe(true);
+      expect(comp.isOpen()).toBe(false);
     });
 
     it('scrolls marked rows into view, tolerating rows not rendered yet', () => {
       setup();
       key('ArrowDown');
-      const scroll = spyOn(HTMLElement.prototype, 'scrollIntoView');
+      const scroll = vi.spyOn(HTMLElement.prototype, 'scrollIntoView');
       key('ArrowDown');
       expect(scroll).toHaveBeenCalledWith({ block: 'nearest' });
       comp.close();
@@ -472,12 +521,12 @@ describe('MultiSelectComponent', () => {
 
     it('opens with Enter unless openOnEnter is false', () => {
       setup();
-      expect(key('Enter').defaultPrevented).toBeTrue();
-      expect(comp.isOpen()).toBeTrue();
+      expect(key('Enter').defaultPrevented).toBe(true);
+      expect(comp.isOpen()).toBe(true);
       comp.close();
       fixture.componentRef.setInput('openOnEnter', false);
-      expect(key('Enter').defaultPrevented).toBeFalse();
-      expect(comp.isOpen()).toBeFalse();
+      expect(key('Enter').defaultPrevented).toBe(false);
+      expect(comp.isOpen()).toBe(false);
     });
 
     it('Enter without a marked row does nothing', () => {
@@ -490,13 +539,13 @@ describe('MultiSelectComponent', () => {
 
     it('uses Space to open and select when not searchable', () => {
       setup({ searchable: false });
-      expect(input().readOnly).toBeTrue();
-      expect(key(' ').defaultPrevented).toBeTrue();
-      expect(comp.isOpen()).toBeTrue();
+      expect(input().readOnly).toBe(true);
+      expect(key(' ').defaultPrevented).toBe(true);
+      expect(comp.isOpen()).toBe(true);
       key(' ');
       expect(comp.selectedItems()).toEqual([LANGS[0]]);
       fixture.componentRef.setInput('searchable', true);
-      expect(key(' ').defaultPrevented).toBeFalse();
+      expect(key(' ').defaultPrevented).toBe(false);
     });
 
     it('Tab selects the marked row with selectOnTab and closes', () => {
@@ -504,7 +553,7 @@ describe('MultiSelectComponent', () => {
       open();
       key('Tab');
       expect(comp.selectedItems()).toEqual([LANGS[0]]);
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
       fixture.componentRef.setInput('selectOnTab', false);
       open();
       key('Tab');
@@ -513,17 +562,17 @@ describe('MultiSelectComponent', () => {
       fixture.componentRef.setInput('markFirst', false);
       open();
       key('Tab');
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
       key('Tab');
     });
 
     it('Escape closes without bubbling only when open', () => {
       setup();
-      const outer = jasmine.createSpy('outer');
+      const outer = vi.fn();
       el.addEventListener('keydown', outer);
       open();
       key('Escape');
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
       expect(outer).not.toHaveBeenCalled();
       key('Escape');
       expect(outer).toHaveBeenCalledTimes(1);
@@ -556,13 +605,13 @@ describe('MultiSelectComponent', () => {
     it('respects keyDownFn and ignores keys when disabled', () => {
       setup({ keyDownFn: (e: KeyboardEvent) => e.key !== 'ArrowDown' });
       key('ArrowDown');
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
       key('Enter');
-      expect(comp.isOpen()).toBeTrue();
+      expect(comp.isOpen()).toBe(true);
       comp.close();
       comp.setDisabledState(true);
       key('Enter');
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
     });
 
     it('stays on the last row at the end of the list', () => {
@@ -595,7 +644,10 @@ describe('MultiSelectComponent', () => {
       fixture.componentRef.setInput('items', ['a']);
       detect();
       expect(marked()!.textContent!.trim()).toBe('a');
-      fixture.componentRef.setInput('items', [{ label: 'x', disabled: true }, 'y']);
+      fixture.componentRef.setInput('items', [
+        { label: 'x', disabled: true },
+        'y',
+      ]);
       fixture.componentRef.setInput('bindLabel', undefined);
       detect();
       expect(marked()!.textContent!.trim()).toBe('y');
@@ -613,9 +665,15 @@ describe('MultiSelectComponent', () => {
     it('groups by property with Bootstrap dropdown headers', () => {
       setup({ groupBy: 'kind' });
       open();
-      const headers = Array.from(document.querySelectorAll('.ms-panel .dropdown-header')).map(h => h.textContent!.trim());
+      const headers = Array.from(
+        document.querySelectorAll('.ms-panel .dropdown-header'),
+      ).map((h) => h.textContent!.trim());
       expect(headers).toEqual(['Static', 'Dynamic']);
-      expect(document.querySelector('.ms-panel .dropdown-header')!.getAttribute('role')).toBe('presentation');
+      expect(
+        document
+          .querySelector('.ms-panel .dropdown-header')!
+          .getAttribute('role'),
+      ).toBe('presentation');
       clickRow('Static');
       expect(comp.selectedItems()).toEqual([]);
       expect(optionEls()[0].classList).toContain('ps-4');
@@ -623,21 +681,35 @@ describe('MultiSelectComponent', () => {
 
     it('groups by function, including object and empty keys', () => {
       const typed = { label: 'Typed' };
-      setup({ groupBy: (item: Lang) => (item.kind === 'Static' ? typed : null), bindLabel: 'name' });
+      setup({
+        groupBy: (item: Lang) => (item.kind === 'Static' ? typed : null),
+        bindLabel: 'name',
+      });
       fixture.componentRef.setInput('bindLabel', undefined);
-      fixture.componentRef.setInput('items', [{ label: 'a', kind: 'Static' }, { label: 'b', kind: 'Dynamic' }]);
+      fixture.componentRef.setInput('items', [
+        { label: 'a', kind: 'Static' },
+        { label: 'b', kind: 'Dynamic' },
+      ]);
       open();
-      const headers = Array.from(document.querySelectorAll('.ms-panel .dropdown-header')).map(h => h.textContent!.trim());
+      const headers = Array.from(
+        document.querySelectorAll('.ms-panel .dropdown-header'),
+      ).map((h) => h.textContent!.trim());
       expect(headers).toEqual(['Typed', '']);
     });
 
     it('selects and unselects whole groups when selectableGroup is set', () => {
       setup({ groupBy: 'kind', selectableGroup: true, bindValue: 'id' });
       open();
-      expect(document.querySelector('.ms-panel .dropdown-header')!.getAttribute('role')).toBe('option');
+      expect(
+        document
+          .querySelector('.ms-panel .dropdown-header')!
+          .getAttribute('role'),
+      ).toBe('option');
       clickRow('Static');
       expect(comp.selectedValues()).toEqual([1, 3]);
-      expect(document.querySelector<HTMLInputElement>('.ms-group input')!.checked).toBeTrue();
+      expect(
+        document.querySelector<HTMLInputElement>('.ms-group input')!.checked,
+      ).toBe(true);
       clickRow('Static');
       expect(comp.selectedValues()).toEqual([]);
       clickRow('Dynamic');
@@ -651,7 +723,9 @@ describe('MultiSelectComponent', () => {
     it('treats a group with only disabled items as unselected', () => {
       setup({ groupBy: 'kind', selectableGroup: true, items: [LANGS[3]] });
       open();
-      expect(document.querySelector<HTMLInputElement>('.ms-group input')!.checked).toBeFalse();
+      expect(
+        document.querySelector<HTMLInputElement>('.ms-group input')!.checked,
+      ).toBe(false);
     });
 
     it('ignores group clicks in single mode', () => {
@@ -666,14 +740,16 @@ describe('MultiSelectComponent', () => {
     it('selects all filtered items and unselects them again', () => {
       setup({ showSelectAll: true, items: ['a', 'b', 'c'] });
       open();
-      const selectAll = () => document.querySelector<HTMLElement>('.ms-select-all')!;
-      const checkbox = () => selectAll().querySelector<HTMLInputElement>('input')!;
+      const selectAll = () =>
+        document.querySelector<HTMLElement>('.ms-select-all')!;
+      const checkbox = () =>
+        selectAll().querySelector<HTMLInputElement>('input')!;
       clickRow('b');
-      expect(checkbox().indeterminate).toBeTrue();
+      expect(checkbox().indeterminate).toBe(true);
       selectAll().click();
       detect();
       expect(comp.selectedValues()).toEqual(['b', 'a', 'c']);
-      expect(checkbox().checked).toBeTrue();
+      expect(checkbox().checked).toBe(true);
       selectAll().click();
       detect();
       expect(comp.selectedValues()).toEqual([]);
@@ -715,8 +791,11 @@ describe('MultiSelectComponent', () => {
     });
 
     it('supports async addTag functions and ignores null results', async () => {
-      const addTag = jasmine.createSpy('addTag').and.callFake((term: string) =>
-        Promise.resolve(term === 'skip' ? null : { id: 99, name: term }));
+      const addTag = vi
+        .fn()
+        .mockImplementation((term: string) =>
+          Promise.resolve(term === 'skip' ? null : { id: 99, name: term }),
+        );
       setup({ addTag });
       type('skip');
       key('Enter');
@@ -739,7 +818,11 @@ describe('MultiSelectComponent', () => {
     });
 
     it('shows the add row even when typeahead needs more characters', () => {
-      setup({ addTag: true, typeahead: new Subject<string>(), minTermLength: 3 });
+      setup({
+        addTag: true,
+        typeahead: new Subject<string>(),
+        minTermLength: 3,
+      });
       type('ab');
       expect(document.querySelector('.ms-tag')).not.toBeNull();
       expect(panel()!.textContent).not.toContain('Type to search');
@@ -756,7 +839,8 @@ describe('MultiSelectComponent', () => {
         await fixture.whenStable();
         detect();
       }
-      return fixture.debugElement.query(By.directive(CdkVirtualScrollViewport))
+      return fixture.debugElement
+        .query(By.directive(CdkVirtualScrollViewport))
         .injector.get(CdkVirtualScrollViewport);
     }
 
@@ -768,10 +852,17 @@ describe('MultiSelectComponent', () => {
     });
 
     it('scrolls to the selected row when opening', async () => {
-      setup({ virtualScroll: true, items: many, itemSize: 30, multiple: false });
+      setup({
+        virtualScroll: true,
+        items: many,
+        itemSize: 30,
+        multiple: false,
+      });
       comp.writeValue('Item 50');
-      const viewport = () => fixture.debugElement.query(By.directive(CdkVirtualScrollViewport))
-        .injector.get(CdkVirtualScrollViewport);
+      const viewport = () =>
+        fixture.debugElement
+          .query(By.directive(CdkVirtualScrollViewport))
+          .injector.get(CdkVirtualScrollViewport);
       open();
       for (let i = 0; i < 3; i++) {
         await fixture.whenStable();
@@ -779,7 +870,7 @@ describe('MultiSelectComponent', () => {
       }
       expect(viewport().measureScrollOffset()).toBe(50 * 30);
       // The CDK re-renders the visible range on the next animation frame after scrolling.
-      await new Promise(resolve => requestAnimationFrame(resolve));
+      await new Promise((resolve) => requestAnimationFrame(resolve));
       await fixture.whenStable();
       detect();
       expect(optionTexts()).toContain('Item 50');
@@ -787,7 +878,7 @@ describe('MultiSelectComponent', () => {
 
     it('does not scroll on open without a marked row', async () => {
       setup({ items: many, markFirst: false });
-      const scroll = spyOn(HTMLElement.prototype, 'scrollIntoView');
+      const scroll = vi.spyOn(HTMLElement.prototype, 'scrollIntoView');
       open();
       await fixture.whenStable();
       expect(scroll).not.toHaveBeenCalled();
@@ -800,7 +891,7 @@ describe('MultiSelectComponent', () => {
 
     it('scrolls to keep the marked row visible', async () => {
       const viewport = await setupVirtual();
-      const scrollTo = spyOn(viewport, 'scrollToOffset').and.callThrough();
+      const scrollTo = vi.spyOn(viewport, 'scrollToOffset');
       for (let i = 0; i < 8; i++) {
         key('ArrowDown');
       }
@@ -813,8 +904,8 @@ describe('MultiSelectComponent', () => {
 
     it('emits scroll and scrollToEnd', async () => {
       const viewport = await setupVirtual();
-      const scroll = jasmine.createSpy('scroll');
-      const end = jasmine.createSpy('end');
+      const scroll = vi.fn();
+      const end = vi.fn();
       comp.scroll.subscribe(scroll);
       comp.scrollToEnd.subscribe(end);
       const host = viewport.elementRef.nativeElement;
@@ -830,8 +921,8 @@ describe('MultiSelectComponent', () => {
 
   it('emits scrollToEnd for the regular list', () => {
     setup({ items: Array.from({ length: 50 }, (_, i) => i) });
-    const end = jasmine.createSpy('end');
-    const scroll = jasmine.createSpy('scroll');
+    const end = vi.fn();
+    const scroll = vi.fn();
     comp.scrollToEnd.subscribe(end);
     comp.scroll.subscribe(scroll);
     open();
@@ -847,11 +938,22 @@ describe('MultiSelectComponent', () => {
 
   describe('dropdown position', () => {
     const rect = (top: number, bottom: number) =>
-      ({ top, bottom, width: 200, height: bottom - top, left: 0, right: 200, x: 0, y: top } as DOMRect);
+      ({
+        top,
+        bottom,
+        width: 200,
+        height: bottom - top,
+        left: 0,
+        right: 200,
+        x: 0,
+        y: top,
+      }) as DOMRect;
 
     it('opens above in auto mode when there is no room below', () => {
       setup();
-      spyOn(control(), 'getBoundingClientRect').and.returnValue(rect(window.innerHeight - 20, window.innerHeight));
+      vi.spyOn(control(), 'getBoundingClientRect').mockReturnValue(
+        rect(window.innerHeight - 20, window.innerHeight),
+      );
       open();
       expect(panel()!.classList).toContain('bottom-100');
       expect(panel()!.classList).not.toContain('top-100');
@@ -859,7 +961,7 @@ describe('MultiSelectComponent', () => {
 
     it('opens below in auto mode with room below', () => {
       setup();
-      spyOn(control(), 'getBoundingClientRect').and.returnValue(rect(0, 30));
+      vi.spyOn(control(), 'getBoundingClientRect').mockReturnValue(rect(0, 30));
       open();
       expect(panel()!.classList).toContain('top-100');
     });
@@ -881,7 +983,9 @@ describe('MultiSelectComponent', () => {
       expect(panel()!.closest('.cdk-overlay-container')).not.toBeNull();
       expect(panel()!.classList).toContain('position-static');
       // Global styles stack the overlay above Bootstrap modals (1055) like a popover (1070), below toasts (1090).
-      expect(getComputedStyle(panel()!.closest('.cdk-overlay-container')!).zIndex).toBe('1070');
+      expect(
+        getComputedStyle(panel()!.closest('.cdk-overlay-container')!).zIndex,
+      ).toBe('1070');
       clickRow('Java');
       expect(comp.selectedItems()).toEqual([LANGS[0]]);
       comp.close();
@@ -928,7 +1032,7 @@ describe('MultiSelectComponent', () => {
       comp.writeValue([{ id: 2, name: 'copy', kind: '' }]);
       detect();
       expect(chips()).toEqual(['Python']);
-      expect(comp.isSelected(LANGS[1])).toBeTrue();
+      expect(comp.isSelected(LANGS[1])).toBe(true);
     });
 
     it('disables and re-enables through setDisabledState', () => {
@@ -936,33 +1040,38 @@ describe('MultiSelectComponent', () => {
       open();
       comp.setDisabledState(true);
       detect();
-      expect(comp.isOpen()).toBeFalse();
-      expect(input().disabled).toBeTrue();
+      expect(comp.isOpen()).toBe(false);
+      expect(input().disabled).toBe(true);
       expect(control().classList).toContain('bg-body-secondary');
       mousedown();
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
       comp.select(LANGS[0]);
       comp.unselect(LANGS[0]);
       comp.clearModel();
       expect(comp.selectedItems()).toEqual([]);
       comp.setDisabledState(false);
       detect();
-      expect(input().disabled).toBeFalse();
+      expect(input().disabled).toBe(false);
     });
 
     it('readonly prevents changes', () => {
       setup({ readonly: true });
       comp.writeValue([LANGS[0]]);
       detect();
-      expect(input().readOnly).toBeTrue();
+      expect(input().readOnly).toBe(true);
       expect(el.querySelector('.ms-chip .btn-close')).toBeNull();
       comp.open();
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
     });
 
     @Component({
       imports: [MultiSelectComponent, ReactiveFormsModule],
-      template: `<app-multi-select [items]="items" bindLabel="name" bindValue="id" [formControl]="ctrl" />`
+      template: `<app-multi-select
+        [items]="items"
+        bindLabel="name"
+        bindValue="id"
+        [formControl]="ctrl"
+      />`,
     })
     class ReactiveHost {
       items = LANGS;
@@ -971,7 +1080,11 @@ describe('MultiSelectComponent', () => {
 
     @Component({
       imports: [MultiSelectComponent, FormsModule],
-      template: `<app-multi-select [items]="items" [multiple]="false" [(ngModel)]="model" />`
+      template: `<app-multi-select
+        [items]="items"
+        [multiple]="false"
+        [(ngModel)]="model"
+      />`,
     })
     class TemplateHost {
       items = ['a', 'b', 'c'];
@@ -983,25 +1096,31 @@ describe('MultiSelectComponent', () => {
       f.detectChanges();
       const host: HTMLElement = f.nativeElement;
       expect(host.querySelector('.ms-chip')!.textContent).toContain('Python');
-      const select = f.debugElement.query(By.directive(MultiSelectComponent)).componentInstance as MultiSelectComponent;
+      const select = f.debugElement.query(By.directive(MultiSelectComponent))
+        .componentInstance as MultiSelectComponent;
       select.select(LANGS[0]);
       expect(f.componentInstance.ctrl.value).toEqual([2, 1]);
       host.querySelector('input')!.dispatchEvent(new FocusEvent('blur'));
       f.detectChanges();
-      expect(f.componentInstance.ctrl.touched).toBeTrue();
-      expect(host.querySelector('app-multi-select')!.classList).toContain('ng-touched');
+      expect(f.componentInstance.ctrl.touched).toBe(true);
+      expect(host.querySelector('app-multi-select')!.classList).toContain(
+        'ng-touched',
+      );
       f.componentInstance.ctrl.setValue([]);
       f.componentInstance.ctrl.disable();
       f.detectChanges();
-      expect(host.querySelector('input')!.disabled).toBeTrue();
+      expect(host.querySelector('input')!.disabled).toBe(true);
     });
 
     it('shows Bootstrap .is-invalid once the control is invalid and touched', () => {
       const f = TestBed.createComponent(ReactiveHost);
-      f.componentInstance.ctrl.setValidators(c => (c.value?.length ? null : { required: true }));
+      f.componentInstance.ctrl.setValidators((c) =>
+        c.value?.length ? null : { required: true },
+      );
       f.componentInstance.ctrl.setValue([]);
       f.detectChanges();
-      const control = () => (f.nativeElement as HTMLElement).querySelector('.ms-control')!;
+      const control = () =>
+        (f.nativeElement as HTMLElement).querySelector('.ms-control')!;
       expect(control().classList).not.toContain('is-invalid');
       f.componentInstance.ctrl.markAsTouched();
       f.detectChanges();
@@ -1014,8 +1133,11 @@ describe('MultiSelectComponent', () => {
       await f.whenStable();
       f.detectChanges();
       const host: HTMLElement = f.nativeElement;
-      expect(host.querySelector('.ms-single-value')!.textContent!.trim()).toBe('b');
-      const select = f.debugElement.query(By.directive(MultiSelectComponent)).componentInstance as MultiSelectComponent;
+      expect(host.querySelector('.ms-single-value')!.textContent!.trim()).toBe(
+        'b',
+      );
+      const select = f.debugElement.query(By.directive(MultiSelectComponent))
+        .componentInstance as MultiSelectComponent;
       select.select('c');
       expect(f.componentInstance.model()).toBe('c');
     });
@@ -1024,25 +1146,47 @@ describe('MultiSelectComponent', () => {
   describe('templates', () => {
     @Component({
       imports: [MultiSelectComponent, ...SELECT_TEMPLATES],
-      template: `
-        <app-multi-select [items]="items()" bindLabel="name" groupBy="kind" [multiple]="multiple()"
-                          [addTag]="true" [loading]="loading()" [typeahead]="typeahead()" [minTermLength]="2">
-          <ng-template appSelectOption let-item let-search="searchTerm" let-i="index">
-            <i class="opt">{{ i }}:{{ item.name }}:{{ search }}</i>
-          </ng-template>
-          <ng-template appSelectLabel let-item let-clear="clear">
-            <b class="lbl" (click)="clear()">{{ item.name }}</b>
-          </ng-template>
-          <ng-template appSelectOptgroup let-label="label" let-items="items">
-            <u class="grp">{{ label }} ({{ items.length }})</u>
-          </ng-template>
-          <ng-template appSelectHeader let-term><div class="hdr">H:{{ term }}</div></ng-template>
-          <ng-template appSelectFooter let-term><div class="ftr">F:{{ term }}</div></ng-template>
-          <ng-template appSelectNotFound let-term><div class="nf">none for {{ term }}</div></ng-template>
-          <ng-template appSelectLoading><div class="ld">wait</div></ng-template>
-          <ng-template appSelectTypeToSearch><div class="tts">more</div></ng-template>
-          <ng-template appSelectTag let-term><div class="tag">new {{ term }}</div></ng-template>
-        </app-multi-select>`
+      template: ` <app-multi-select
+        [items]="items()"
+        bindLabel="name"
+        groupBy="kind"
+        [multiple]="multiple()"
+        [addTag]="true"
+        [loading]="loading()"
+        [typeahead]="typeahead()"
+        [minTermLength]="2"
+      >
+        <ng-template
+          appSelectOption
+          let-item
+          let-search="searchTerm"
+          let-i="index"
+        >
+          <i class="opt">{{ i }}:{{ item.name }}:{{ search }}</i>
+        </ng-template>
+        <ng-template appSelectLabel let-item let-clear="clear">
+          <b class="lbl" (click)="clear()">{{ item.name }}</b>
+        </ng-template>
+        <ng-template appSelectOptgroup let-label="label" let-items="items">
+          <u class="grp">{{ label }} ({{ items.length }})</u>
+        </ng-template>
+        <ng-template appSelectHeader let-term
+          ><div class="hdr">H:{{ term }}</div></ng-template
+        >
+        <ng-template appSelectFooter let-term
+          ><div class="ftr">F:{{ term }}</div></ng-template
+        >
+        <ng-template appSelectNotFound let-term
+          ><div class="nf">none for {{ term }}</div></ng-template
+        >
+        <ng-template appSelectLoading><div class="ld">wait</div></ng-template>
+        <ng-template appSelectTypeToSearch
+          ><div class="tts">more</div></ng-template
+        >
+        <ng-template appSelectTag let-term
+          ><div class="tag">new {{ term }}</div></ng-template
+        >
+      </app-multi-select>`,
     })
     class TemplatesHost {
       items = signal(LANGS);
@@ -1053,13 +1197,12 @@ describe('MultiSelectComponent', () => {
 
     @Component({
       imports: [MultiSelectComponent, SelectMultiLabelTemplate],
-      template: `
-        <app-multi-select [items]="items">
-          <ng-template appSelectMultiLabel let-items let-clear="clear">
-            <span class="multi">{{ items.length }} selected</span>
-            <button class="clr" (click)="clear(items[0])">x</button>
-          </ng-template>
-        </app-multi-select>`
+      template: ` <app-multi-select [items]="items">
+        <ng-template appSelectMultiLabel let-items let-clear="clear">
+          <span class="multi">{{ items.length }} selected</span>
+          <button class="clr" (click)="clear(items[0])">x</button>
+        </ng-template>
+      </app-multi-select>`,
     })
     class MultiLabelHost {
       items = ['a', 'b'];
@@ -1072,7 +1215,9 @@ describe('MultiSelectComponent', () => {
     beforeEach(() => {
       hostFixture = TestBed.createComponent(TemplatesHost);
       hostFixture.detectChanges();
-      select = hostFixture.debugElement.query(By.directive(MultiSelectComponent)).componentInstance;
+      select = hostFixture.debugElement.query(
+        By.directive(MultiSelectComponent),
+      ).componentInstance;
     });
 
     function refresh() {
@@ -1122,7 +1267,8 @@ describe('MultiSelectComponent', () => {
       const f = TestBed.createComponent(TemplatesHost);
       f.componentInstance.items.set([]);
       f.detectChanges();
-      const s = f.debugElement.query(By.directive(MultiSelectComponent)).componentInstance as MultiSelectComponent;
+      const s = f.debugElement.query(By.directive(MultiSelectComponent))
+        .componentInstance as MultiSelectComponent;
       s.open();
       f.detectChanges();
       expect(q('.nf')!.textContent).toBe('none for ');
@@ -1131,7 +1277,8 @@ describe('MultiSelectComponent', () => {
     it('renders the multi label template', () => {
       const f = TestBed.createComponent(MultiLabelHost);
       f.detectChanges();
-      const s = f.debugElement.query(By.directive(MultiSelectComponent)).componentInstance as MultiSelectComponent;
+      const s = f.debugElement.query(By.directive(MultiSelectComponent))
+        .componentInstance as MultiSelectComponent;
       s.writeValue(['a', 'b']);
       f.detectChanges();
       expect(q('.multi')!.textContent).toBe('2 selected');
@@ -1142,12 +1289,19 @@ describe('MultiSelectComponent', () => {
 
     it('declares typed template contexts', () => {
       const guards = [
-        SelectOptionTemplate, SelectLabelTemplate, SelectMultiLabelTemplate, SelectOptgroupTemplate,
-        SelectHeaderTemplate, SelectFooterTemplate, SelectNotFoundTemplate, SelectLoadingTemplate,
-        SelectTypeToSearchTemplate, SelectTagTemplate
+        SelectOptionTemplate,
+        SelectLabelTemplate,
+        SelectMultiLabelTemplate,
+        SelectOptgroupTemplate,
+        SelectHeaderTemplate,
+        SelectFooterTemplate,
+        SelectNotFoundTemplate,
+        SelectLoadingTemplate,
+        SelectTypeToSearchTemplate,
+        SelectTagTemplate,
       ];
       for (const dir of guards) {
-        expect((dir as any).ngTemplateContextGuard(null, {})).toBeTrue();
+        expect((dir as any).ngTemplateContextGuard(null, {})).toBe(true);
       }
     });
   });
@@ -1157,12 +1311,16 @@ describe('MultiSelectComponent', () => {
 
     it('ignores right and middle clicks', () => {
       for (const button of [1, 2]) {
-        const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true, button });
+        const event = new MouseEvent('mousedown', {
+          bubbles: true,
+          cancelable: true,
+          button,
+        });
         control().dispatchEvent(event);
-        expect(event.defaultPrevented).toBeFalse();
+        expect(event.defaultPrevented).toBe(false);
       }
       detect();
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
     });
 
     it('does not toggle the panel from the chip and clear buttons', () => {
@@ -1170,18 +1328,21 @@ describe('MultiSelectComponent', () => {
       detect();
       mousedown(el.querySelector<HTMLElement>('.ms-chip .btn-close')!);
       mousedown(el.querySelector<HTMLElement>('.ms-clear')!);
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
     });
   });
 
   describe('keyboard (extended)', () => {
-    const many = Array.from({ length: 30 }, (_, i) => `Item ${String(i).padStart(2, '0')}`);
+    const many = Array.from(
+      { length: 30 },
+      (_, i) => `Item ${String(i).padStart(2, '0')}`,
+    );
 
     it('jumps with Home/End and pages with PageUp/PageDown', () => {
       setup({ items: many, bindLabel: undefined });
       key('Home');
       key('End');
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
       open();
       key('End');
       expect(marked()!.textContent!.trim()).toBe('Item 29');
@@ -1194,7 +1355,7 @@ describe('MultiSelectComponent', () => {
       key('PageUp');
       expect(marked()!.textContent!.trim()).toBe('Item 00');
       comp.close();
-      expect(key('PageDown').defaultPrevented).toBeFalse();
+      expect(key('PageDown').defaultPrevented).toBe(false);
     });
 
     it('pages by at least one row with large rows', () => {
@@ -1205,31 +1366,40 @@ describe('MultiSelectComponent', () => {
     });
 
     it('jumps to options by typing when not searchable', () => {
-      jasmine.clock().install();
+      vi.useFakeTimers();
       try {
-        setup({ searchable: false, items: ['Apple', 'Banana', 'Blueberry', { label: 'Bx', disabled: true }, 'Cherry'],
-          bindLabel: undefined });
+        setup({
+          searchable: false,
+          items: [
+            'Apple',
+            'Banana',
+            'Blueberry',
+            { label: 'Bx', disabled: true },
+            'Cherry',
+          ],
+          bindLabel: undefined,
+        });
         key('b');
-        expect(comp.isOpen()).toBeTrue();
+        expect(comp.isOpen()).toBe(true);
         expect(marked()!.textContent!.trim()).toBe('Banana');
         key('b');
         expect(marked()!.textContent!.trim()).toBe('Banana');
-        jasmine.clock().tick(500);
+        vi.advanceTimersByTime(500);
         key('b');
         expect(marked()!.textContent!.trim()).toBe('Blueberry');
         key('l');
         expect(marked()!.textContent!.trim()).toBe('Blueberry');
-        jasmine.clock().tick(500);
+        vi.advanceTimersByTime(500);
         key('z');
         expect(marked()!.textContent!.trim()).toBe('Blueberry');
-        jasmine.clock().tick(500);
+        vi.advanceTimersByTime(500);
         keyOn(input(), 'a');
         expect(marked()!.textContent!.trim()).toBe('Apple');
         keyOn(input(), 'c');
         keyOn(input(), 'x', { ctrlKey: true });
         comp.writeValue([]);
       } finally {
-        jasmine.clock().uninstall();
+        vi.useRealTimers();
       }
     });
 
@@ -1237,10 +1407,10 @@ describe('MultiSelectComponent', () => {
       setup({ searchable: false, items: ['Apple'], bindLabel: undefined });
       keyOn(input(), 'a', { metaKey: true });
       keyOn(input(), 'a', { altKey: true });
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
       setup({ items: ['Apple'], bindLabel: undefined });
       key('a');
-      expect(comp.isOpen()).toBeFalse();
+      expect(comp.isOpen()).toBe(false);
     });
 
     it('moves from the search input to the chips and removes them with the keyboard', async () => {
@@ -1248,12 +1418,13 @@ describe('MultiSelectComponent', () => {
       document.body.appendChild(el);
       comp.writeValue([1, 2, 3]);
       detect();
-      const chipEls = () => Array.from(el.querySelectorAll<HTMLElement>('app-chip'));
+      const chipEls = () =>
+        Array.from(el.querySelectorAll<HTMLElement>('app-chip'));
       type('x');
       input().setSelectionRange(1, 1);
-      expect(key('ArrowLeft').defaultPrevented).toBeFalse();
+      expect(key('ArrowLeft').defaultPrevented).toBe(false);
       type('');
-      expect(key('ArrowLeft').defaultPrevented).toBeTrue();
+      expect(key('ArrowLeft').defaultPrevented).toBe(true);
       await fixture.whenStable();
       expect(document.activeElement).toBe(chipEls()[2]);
       keyOn(chipEls()[2], 'Backspace');
@@ -1270,24 +1441,27 @@ describe('MultiSelectComponent', () => {
       keyOn(chipEls()[0], 'Delete');
       await Promise.resolve();
       expect(comp.selectedValues()).toEqual([1, 2]);
-      expect(comp['removeChipAt'](9)).toBeFalse();
+      expect(comp['removeChipAt'](9)).toBe(false);
     });
 
     it('ignores ArrowLeft for single selection and without a value', () => {
       setup();
-      expect(key('ArrowLeft').defaultPrevented).toBeFalse();
+      expect(key('ArrowLeft').defaultPrevented).toBe(false);
       fixture.componentRef.setInput('multiple', false);
       comp.writeValue(LANGS[0]);
-      expect(key('ArrowLeft').defaultPrevented).toBeFalse();
+      expect(key('ArrowLeft').defaultPrevented).toBe(false);
     });
   });
 
   describe('announcements', () => {
-    const live = () => el.querySelector('[aria-live=polite]')!.textContent!.trim();
+    const live = () =>
+      el.querySelector('[aria-live=polite]')!.textContent!.trim();
 
     it('announces selection changes in a visually hidden live region', () => {
       setup({ bindValue: 'id', showSelectAll: true });
-      expect(el.querySelector('[aria-live=polite]')!.classList).toContain('visually-hidden');
+      expect(el.querySelector('[aria-live=polite]')!.classList).toContain(
+        'visually-hidden',
+      );
       comp.select(LANGS[0]);
       detect();
       expect(live()).toBe('Java selected');
@@ -1309,17 +1483,82 @@ describe('MultiSelectComponent', () => {
 
     it('uses configurable texts from provideSelectConfig', () => {
       TestBed.configureTestingModule({
-        providers: [provideSelectConfig({ selectedText: '{label} gewählt', removeItemText: 'Entferne {label}',
-          notFoundText: 'Nichts', type: 'info' })]
+        providers: [
+          provideSelectConfig({
+            selectedText: '{label} gewählt',
+            removeItemText: 'Entferne {label}',
+            notFoundText: 'Nichts',
+            type: 'info',
+          }),
+        ],
       });
       setup({ bindValue: 'id' });
       comp.select(LANGS[0]);
       detect();
       expect(live()).toBe('Java gewählt');
-      expect(el.querySelector('.ms-chip .btn-close')!.getAttribute('aria-label')).toBe('Entferne Java');
+      expect(
+        el.querySelector('.ms-chip .btn-close')!.getAttribute('aria-label'),
+      ).toBe('Entferne Java');
       expect(el.querySelector('.ms-chip')!.classList).toContain('text-bg-info');
       type('zzz');
       expect(panel()!.textContent).toContain('Nichts');
+    });
+  });
+
+  describe('metadata', () => {
+    it('supports TestBed metadata overrides (JIT re-compilation)', () => {
+      TestBed.overrideComponent(MultiSelectComponent, { add: { host: { 'data-overridden': '' } } });
+      setup();
+      expect(el.hasAttribute('data-overridden')).toBe(true);
+      open();
+      expect(optionTexts().length).toBe(4);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('labels duplicate values with the first matching item', () => {
+      setup({ bindValue: 'id', items: [{ id: 1, name: 'First' }, { id: 1, name: 'Second' }] });
+      comp.writeValue([1]);
+      detect();
+      expect(chips()).toEqual(['First']);
+    });
+
+    it('select all is unchecked at max when none of the filtered options is selected', () => {
+      setup({ bindValue: 'id', showSelectAll: true, maxSelectedItems: 1 });
+      comp.writeValue([1]);
+      type('Py');
+      const checkbox = document.querySelector<HTMLInputElement>('.ms-select-all input')!;
+      expect(checkbox.checked).toBe(false);
+      document.querySelector<HTMLElement>('.ms-select-all')!.click();
+      expect(comp.selectedValues()).toEqual([1]);
+      type('');
+      expect(document.querySelector<HTMLInputElement>('.ms-select-all input')!.checked).toBe(true);
+    });
+
+    it('select all does nothing when every option is disabled', () => {
+      setup({ showSelectAll: true, items: [LANGS[3]] });
+      const onChange = vi.fn();
+      comp.registerOnChange(onChange);
+      open();
+      document.querySelector<HTMLElement>('.ms-select-all')!.click();
+      expect(onChange).not.toHaveBeenCalled();
+      expect(comp.selectedValues()).toEqual([]);
+    });
+
+    it('select all only unselects the filtered options', () => {
+      setup({ bindValue: 'id', showSelectAll: true });
+      comp.writeValue([1, 2]);
+      type('Py');
+      document.querySelector<HTMLElement>('.ms-select-all')!.click();
+      expect(comp.selectedValues()).toEqual([1]);
+    });
+
+    it('select all only unselects the filtered options with a custom compareWith', () => {
+      setup({ compareWith: (a: Lang, b: Lang) => a.id === b.id, showSelectAll: true });
+      comp.writeValue([{ ...LANGS[0] }, { ...LANGS[1] }]);
+      type('Py');
+      document.querySelector<HTMLElement>('.ms-select-all')!.click();
+      expect(comp.selectedValues()).toEqual([{ ...LANGS[0] }]);
     });
   });
 
@@ -1327,13 +1566,14 @@ describe('MultiSelectComponent', () => {
     it('selects all with one model update, skipping disabled and duplicate items and honouring the max', () => {
       const dup = { id: 1, name: 'Java again', kind: 'Static' };
       setup({ bindValue: 'id', showSelectAll: true, items: [...LANGS, dup] });
-      const onChange = jasmine.createSpy('onChange');
-      const added = jasmine.createSpy('add');
+      const onChange = vi.fn();
+      const added = vi.fn();
       comp.registerOnChange(onChange);
       comp.add.subscribe(added);
       open();
       document.querySelector<HTMLElement>('.ms-select-all')!.click();
-      expect(onChange).toHaveBeenCalledOnceWith([1, 2, 3]);
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith([1, 2, 3]);
       expect(added).toHaveBeenCalledTimes(3);
       comp.clearModel();
       fixture.componentRef.setInput('maxSelectedItems', 2);
@@ -1343,21 +1583,25 @@ describe('MultiSelectComponent', () => {
     });
 
     it('unselects all with one model update, emitting each removed item', () => {
-      setup({ bindValue: 'id', showSelectAll: true, items: [], });
+      setup({ bindValue: 'id', showSelectAll: true, items: [] });
       comp.writeValue([1, 2]);
       fixture.componentRef.setInput('items', LANGS.slice(0, 2));
-      const onChange = jasmine.createSpy('onChange');
-      const removed = jasmine.createSpy('remove');
+      const onChange = vi.fn();
+      const removed = vi.fn();
       comp.registerOnChange(onChange);
       comp.remove.subscribe(removed);
       open();
       document.querySelector<HTMLElement>('.ms-select-all')!.click();
-      expect(onChange).toHaveBeenCalledOnceWith([]);
-      expect(removed.calls.allArgs()).toEqual([[LANGS[0]], [LANGS[1]]]);
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith([]);
+      expect(vi.mocked(removed).mock.calls).toEqual([[LANGS[0]], [LANGS[1]]]);
     });
 
     it('scans with a custom compareWith', () => {
-      setup({ compareWith: (a: Lang, b: Lang) => a.id === b.id, showSelectAll: true });
+      setup({
+        compareWith: (a: Lang, b: Lang) => a.id === b.id,
+        showSelectAll: true,
+      });
       comp.writeValue([{ id: 2, name: 'copy', kind: '' }]);
       detect();
       open();
