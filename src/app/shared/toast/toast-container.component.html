@@ -1,17 +1,12 @@
-<div class="toast-container position-fixed p-3" [class]="'toast-container position-fixed p-3 pos-' + service.position()"
-     aria-live="polite" aria-atomic="true">
-  @for (toast of service.toasts(); track toast.id) {
-    <div class="toast show border-0 text-bg-{{ toast.type }}" [attr.role]="toast.type === 'danger' ? 'alert' : 'status'">
-      <div class="d-flex">
-        <div class="toast-body">
-          @if (toast.title) {
-            <strong class="d-block">{{ toast.title }}</strong>
-          }
-          {{ toast.message }}
-        </div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" aria-label="Close"
-                (click)="service.remove(toast.id)"></button>
+<!-- All positions stay rendered so leave animations of the last toast are not cut off. -->
+@for (group of groups(); track group.position) {
+  <div class="toast-container position-fixed p-3" [class]="group.classes" [attr.data-position]="group.position">
+    @for (toast of group.toasts; track track(toast); let last = $last) {
+      <!-- Bootstrap's toast spacing variable lives on .toast, so the wrapper gets the matching mb-4 utility. -->
+      <div class="toast-slot" [class.mb-4]="!last"
+           (animate.enter)="fadeIn($event, toast)" (animate.leave)="fadeOut($event, toast)">
+        <ng-container *ngComponentOutlet="toast.config.toastComponent; injector: toast.injector" />
       </div>
-    </div>
-  }
-</div>
+    }
+  </div>
+}

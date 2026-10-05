@@ -1,0 +1,20 @@
+// Bootstrap has no timed progress animation; these keyframes drive the countdown `.progress-bar` width.
+// The duration is bound per toast in the template.
+
+.toast-progress-decreasing {
+  animation: toast-progress-decreasing linear forwards;
+}
+
+.toast-progress-increasing {
+  animation: toast-progress-increasing linear forwards;
+}
+
+@keyframes toast-progress-decreasing {
+  from { width: 100%; }
+  to { width: 0; }
+}
+
+@keyframes toast-progress-increasing {
+  from { width: 0; }
+  to { width: 100%; }
+}

@@ -1,12 +1,12 @@
-.tag-input-txt {
-  border: 0;
+@use '../util/form-control';
 
-  &:focus {
-    outline: none;
-  }
+// Only rules Bootstrap classes cannot express; everything else is Bootstrap classes in the template.
+
+.ti-control {
+  @include form-control.focus-within;
 }
 
-.border,
-.border-bottom {
-  border-color: #ced4da !important;
+// Bootstrap has no max-height utility; caps the suggestion list like a native select's popup.
+.ti-dropdown {
+  max-height: 15rem;
 }

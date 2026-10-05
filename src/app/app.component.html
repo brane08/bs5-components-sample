@@ -1,74 +1,230 @@
-<div class="container">
-  <h1>Bootstrap Components</h1>
+<div class="container py-4">
+  <h1 class="mb-4">Bootstrap Components</h1>
 
-  <div class="card">
-    <div class="card-header">Tag Input Component</div>
+  <div class="mb-4 col-md-4">
+    <label class="form-label" for="variant">Chip variant</label>
+    <select id="variant" class="form-select" [(ngModel)]="variant">
+      @for (item of variants; track item) {
+        <option [value]="item">{{ item }}</option>
+      }
+    </select>
+  </div>
+
+  <section class="card mb-4">
+    <h2 class="card-header h5">Tag input</h2>
+    <div class="card-body row g-3">
+      <div class="col-md-6">
+        <label class="form-label" for="ti-basic">Comma, paste &amp; double-click to edit</label>
+        <app-tag-input inputId="ti-basic" [(ngModel)]="tagList" [type]="variant()" [separatorKeys]="[',']"
+                       addOnPaste editable placeholder="+ Tag" secondaryPlaceholder="Type, then Enter or comma" />
+        <div class="form-text">Value: {{ tagList() | json }}</div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="ti-langs">Objects, only from autocomplete, custom chip</label>
+        <app-tag-input inputId="ti-langs" [(ngModel)]="languageTags" [autocompleteItems]="languages"
+                       identifyBy="id" displayBy="name" [modelAsStrings]="false" onlyFromAutocomplete
+                       showDropdownIfEmpty [minimumTextLength]="0" focusFirstElement [type]="variant()"
+                       secondaryPlaceholder="Pick languages">
+          <ng-template appTag let-item let-display="display">{{ display }} <small class="opacity-75">{{ $any(item).kind }}</small></ng-template>
+        </app-tag-input>
+        <div class="form-text">Value: {{ languageTags().length }} language(s)</div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="ti-emails">Validation, max 3, lower-cased on add</label>
+        <app-tag-input inputId="ti-emails" [(ngModel)]="emails" [validators]="emailValidators"
+                       [errorMessages]="emailErrors" [maxItems]="3" [onAdding]="lowerCase" [type]="variant()"
+                       secondaryPlaceholder="E-mail addresses" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="ti-people">Async autocomplete</label>
+        <app-tag-input inputId="ti-people" [(ngModel)]="peopleTags" [autocompleteObservable]="searchPeople"
+                       [type]="variant()" secondaryPlaceholder="Search people" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="ti-team-a">Drag tags between inputs</label>
+        <app-tag-input inputId="ti-team-a" dragZone="team" [(ngModel)]="teamA" [type]="variant()" />
+        <app-tag-input class="mt-2" inputId="ti-team-b" dragZone="team" [(ngModel)]="teamB" type="dark" />
+      </div>
+    </div>
+  </section>
+
+  <section class="card mb-4">
+    <h2 class="card-header h5">Select (template-driven)</h2>
+    <div class="card-body row g-3">
+      <div class="col-md-6">
+        <label class="form-label" for="langs">Multiple, grouped, select all</label>
+        <app-multi-select labelForId="langs" [items]="languages" bindLabel="name" bindValue="id" groupBy="kind"
+                          selectableGroup showSelectAll [type]="variant()" placeholder="Pick languages"
+                          [(ngModel)]="selectedLanguageIds" />
+        <div class="form-text">Value: {{ selectedLanguageIds() | json }}</div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="fav">Single, custom templates, append to body</label>
+        <app-multi-select labelForId="fav" [items]="languages" bindLabel="name" [multiple]="false"
+                          appendTo="body" placeholder="Favourite language" [(ngModel)]="favourite">
+          <ng-template appSelectOption let-item let-search="searchTerm">
+            <span class="badge text-bg-light border me-2">{{ item.kind }}</span>{{ item.name }}
+          </ng-template>
+          <ng-template appSelectLabel let-item>
+            <strong>{{ item.name }}</strong> <small class="text-body-secondary">({{ item.kind }})</small>
+          </ng-template>
+        </app-multi-select>
+        <div class="form-text">Value: {{ favourite()?.name ?? 'none' }}</div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="tags">Tagging (add new items)</label>
+        <app-multi-select labelForId="tags" [items]="languages" bindLabel="name" [addTag]="addCustomTag"
+                          hideSelected [maxSelectedItems]="4" [type]="variant()" placeholder="Max 4"
+                          [(ngModel)]="tags" />
+        <div class="form-text">Value: {{ tags().length }} item(s)</div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="city">Virtual scroll (10,000 items)</label>
+        <app-multi-select labelForId="city" [items]="cities" bindLabel="name" bindValue="id" [multiple]="false"
+                          virtualScroll placeholder="Pick a city" [(ngModel)]="city" />
+        <div class="form-text">Value: {{ city() }}</div>
+      </div>
+      <div class="col-md-6">
+        <span class="form-label d-block">Inside a Bootstrap modal (append to body)</span>
+        <button class="btn btn-outline-primary" type="button" (click)="modalOpen.set(true)">Open modal</button>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="people">Async typeahead (min 1 char)</label>
+        <app-multi-select labelForId="people" [items]="people()" [typeahead]="peopleInput$" [minTermLength]="1"
+                          [loading]="peopleLoading()" [type]="variant()" placeholder="Search people"
+                          [(ngModel)]="selectedPeople" />
+        <div class="form-text">Value: {{ selectedPeople() | json }}</div>
+      </div>
+    </div>
+  </section>
+
+  @if (modalOpen()) {
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="demo-modal-title">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 class="modal-title h5" id="demo-modal-title">Pick languages</h3>
+            <button type="button" class="btn-close" aria-label="Close" (click)="modalOpen.set(false)"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label" for="modal-langs">Languages</label>
+            <app-multi-select labelForId="modal-langs" [items]="languages" bindLabel="name" bindValue="id"
+                              appendTo="body" [type]="variant()" [(ngModel)]="selectedLanguageIds" />
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" (click)="modalOpen.set(false)">Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-backdrop show"></div>
+  }
+
+  <section class="card mb-4">
+    <h2 class="card-header h5">Reactive form</h2>
     <div class="card-body">
-      <div class="d-flex">
-        <div class="form-group">
-          <label class="form-label">Select Type:</label>
-          <select class="form-select" [(ngModel)]="selectedType">
-            @for (item of typeList; track item) {
-              <option>{{ item }}</option>
-            }
-          </select>
-        </div>
-      </div>
-      <div class="d-flex mt-4 mb-4">
-        <div class="form-group">
-          <label class="form-label">Tag Input:</label>
-          <app-tag-input
-            [(ngModel)]="tagList"
-            [type]="selectedType"
-          ></app-tag-input>
-        </div>
-      </div>
-      <h2>Your selected Tags:</h2>
-      <div class="d-flex">
-        <ul>
-          @for (tag of tagList; track tag) {
-            <li>{{ tag }}</li>
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div class="mb-3">
+          <label class="form-label">Tags</label>
+          <app-tag-input formControlName="tags" [type]="variant()" />
+          @if (form.controls.tags.invalid && form.controls.tags.touched) {
+            <div class="invalid-feedback d-block">At least one tag is required.</div>
           }
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <div class="card mt-4">
-    <div class="card-header">Multi Select Component</div>
-    <div class="card-body">
-      <app-multi-select [items]="languages" [(ngModel)]="selectedLanguages" [type]="selectedType"
-                        placeholder="Pick languages"></app-multi-select>
-      <p class="mt-3 mb-0">Selected: {{ selectedLanguages.join(', ') || 'none' }}</p>
-    </div>
-  </div>
-
-  <div class="card mt-4">
-    <div class="card-header">Reactive Form</div>
-    <div class="card-body">
-      <form [formGroup]="form" (ngSubmit)="submit()">
-        <label class="form-label">Tags</label>
-        <app-tag-input formControlName="tags" [type]="selectedType"></app-tag-input>
-        <label class="form-label mt-3">Languages</label>
-        <app-multi-select formControlName="languages" [items]="languages" [type]="selectedType"></app-multi-select>
-        <div class="mt-3 d-flex gap-2">
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="r-langs">Languages</label>
+          <app-multi-select labelForId="r-langs" formControlName="languages" [items]="languages" bindLabel="name"
+                            bindValue="id" [type]="variant()" />
+          @if (form.controls.languages.invalid && form.controls.languages.touched) {
+            <div class="invalid-feedback d-block">Pick at least one language.</div>
+          }
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="r-fav">Favourite</label>
+          <app-multi-select labelForId="r-fav" formControlName="favourite" [items]="languages" bindLabel="name"
+                            bindValue="id" [multiple]="false" [searchable]="false" placeholder="Required" />
+          @if (form.controls.favourite.invalid && form.controls.favourite.touched) {
+            <div class="invalid-feedback d-block">Favourite is required.</div>
+          }
+        </div>
+        <div class="d-flex gap-2">
           <button class="btn btn-primary" type="submit">Submit</button>
-          <button class="btn btn-outline-secondary" type="button"
-                  (click)="form.controls.tags.disabled ? form.enable() : form.disable()">Toggle disabled</button>
+          <button class="btn btn-outline-secondary" type="button" (click)="toggleDisabled()">Toggle disabled</button>
         </div>
       </form>
     </div>
-  </div>
+  </section>
 
-  <div class="card mt-4 mb-4">
-    <div class="card-header">Toast Service</div>
-    <div class="card-body d-flex gap-2">
-      <button class="btn btn-success" (click)="toast.success('Saved successfully', { title: 'Success' })">Success</button>
-      <button class="btn btn-info" (click)="toast.info('Heads up')">Info</button>
-      <button class="btn btn-warning" (click)="toast.warning('Check your input')">Warning</button>
-      <button class="btn btn-danger" (click)="toast.error('Something failed', { title: 'Error', timeOut: 0 })">Error (sticky)</button>
-      <button class="btn btn-outline-secondary" (click)="toast.clear()">Clear</button>
+  <section class="card mb-4">
+    <h2 class="card-header h5">Toast service</h2>
+    <div class="card-body">
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <label class="form-label" for="t-title">Title</label>
+          <input id="t-title" class="form-control" [(ngModel)]="title">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="t-message">Message</label>
+          <input id="t-message" class="form-control" [(ngModel)]="message">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label" for="t-timeout">Time out (ms)</label>
+          <input id="t-timeout" class="form-control" type="number" [(ngModel)]="timeOut">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label" for="t-position">Position</label>
+          <select id="t-position" class="form-select" [(ngModel)]="position">
+            @for (p of positions; track p) {
+              <option [value]="p">{{ p.replace('toast-', '') }}</option>
+            }
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label" for="t-max">Max opened</label>
+          <input id="t-max" class="form-control" type="number" min="0"
+                 [ngModel]="toast.config.maxOpened" (ngModelChange)="setMaxOpened($event)">
+        </div>
+      </div>
+      <div class="d-flex flex-wrap gap-3 mb-3">
+        <div class="form-check form-switch">
+          <input id="t-progress" class="form-check-input" type="checkbox" [(ngModel)]="progressBar">
+          <label class="form-check-label" for="t-progress">Progress bar</label>
+        </div>
+        <div class="form-check form-switch">
+          <input id="t-close" class="form-check-input" type="checkbox" [(ngModel)]="closeButton">
+          <label class="form-check-label" for="t-close">Close button</label>
+        </div>
+        <div class="form-check form-switch">
+          <input id="t-tap" class="form-check-input" type="checkbox" [(ngModel)]="tapToDismiss">
+          <label class="form-check-label" for="t-tap">Tap to dismiss</label>
+        </div>
+        <div class="form-check form-switch">
+          <input id="t-html" class="form-check-input" type="checkbox" [(ngModel)]="enableHtml">
+          <label class="form-check-label" for="t-html">HTML</label>
+        </div>
+        <div class="form-check form-switch">
+          <input id="t-dup" class="form-check-input" type="checkbox" [ngModel]="toast.config.preventDuplicates"
+                 (ngModelChange)="setGlobal('preventDuplicates', $event)">
+          <label class="form-check-label" for="t-dup">Prevent duplicates</label>
+        </div>
+        <div class="form-check form-switch">
+          <input id="t-count" class="form-check-input" type="checkbox" [ngModel]="toast.config.countDuplicates"
+                 (ngModelChange)="setGlobal('countDuplicates', $event)">
+          <label class="form-check-label" for="t-count">Count duplicates</label>
+        </div>
+        <div class="form-check form-switch">
+          <input id="t-newest" class="form-check-input" type="checkbox" [ngModel]="toast.config.newestOnTop"
+                 (ngModelChange)="setGlobal('newestOnTop', $event)">
+          <label class="form-check-label" for="t-newest">Newest on top</label>
+        </div>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-success" type="button" (click)="showToast('success')">Success</button>
+        <button class="btn btn-info" type="button" (click)="showToast('info')">Info</button>
+        <button class="btn btn-warning" type="button" (click)="showToast('warning')">Warning</button>
+        <button class="btn btn-danger" type="button" (click)="showToast('error')">Error</button>
+        <button class="btn btn-outline-secondary" type="button" (click)="toast.clear()">Clear all</button>
+      </div>
     </div>
-  </div>
+  </section>
 </div>
-<app-toast-container></app-toast-container>
