@@ -1,8 +1,26 @@
-<div class="d-flex align-items-center border-bottom bg-white px-2 py-1 w-100" [ngClass]="{'border rounded': editor}">
-  <div class="badge bg-{{ type }} me-1" *ngFor="let item of tags; index as i">
-    <span class="me-1">{{item}}</span>
-    <button type="button" class="btn-close btn-close-white" aria-label="Close" (click)="remove(item, i)"></button>
-  </div>
-  <input *ngIf="editor" class="tag-input-txt w-100" type="text" (click)="click($event)" (focusout)="click($event)"
-         (keyup)="append($event)" [(ngModel)]="txtModel">
+<div
+  class="d-flex align-items-center border-bottom bg-white px-2 py-1 w-100"
+  [ngClass]="{ 'border rounded': editor }"
+>
+  @for (item of tags; track item; let i = $index) {
+    <div class="badge bg-{{ type }} me-1">
+      <span class="me-1">{{ item }}</span>
+      <button
+        type="button"
+        class="btn-close btn-close-white"
+        [attr.aria-label]="'Remove ' + item"
+        [disabled]="disabled"
+        (click)="remove(i)"
+      ></button>
+    </div>
+  }
+  @if (editor && !disabled) {
+    <input
+      class="tag-input-txt w-100"
+      type="text"
+      (focusout)="commit()"
+      (keydown)="onKeydown($event)"
+      [(ngModel)]="txtModel"
+    />
+  }
 </div>

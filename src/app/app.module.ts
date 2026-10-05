@@ -3,7 +3,9 @@ import { BrowserModule } from '@angular/platform-browser';
 
 import { AppComponent } from './app.component';
 import { SharedModule } from "./shared/shared.module";
-import { FormsModule } from "@angular/forms";
+import { FormsModule, ReactiveFormsModule } from "@angular/forms";
+import { ToastContainerComponent } from "./shared/toast/toast-container.component";
+import { MultiSelectComponent } from "./shared/multi-select/multi-select.component";
 
 @NgModule({
   declarations: [
@@ -12,7 +14,10 @@ import { FormsModule } from "@angular/forms";
   imports: [
     BrowserModule,
     SharedModule,
-    FormsModule
+    FormsModule,
+    ReactiveFormsModule,
+    ToastContainerComponent,
+    MultiSelectComponent
   ],
   providers: [],
   bootstrap: [AppComponent]
