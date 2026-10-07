@@ -289,7 +289,7 @@ describe('Toast', () => {
         'Wiederholt',
       );
       expect(
-        toast.querySelector('.progress')!.getAttribute('aria-hidden'),
+        toast.querySelector('.border-top[aria-hidden=true]')!.getAttribute('aria-hidden'),
       ).toBe('true');
       expect(toast.querySelector('[role=progressbar]')).toBeNull();
     });
@@ -317,7 +317,7 @@ describe('Toast', () => {
     it('auto-dismisses after timeOut with a progress bar', async () => {
       service.info('x', undefined, { timeOut: 1000, progressBar: true });
       await render();
-      const bar = toasts()[0].querySelector<HTMLElement>('.progress-bar')!;
+      const bar = toasts()[0].querySelector<HTMLElement>('[class*="toast-progress-"]')!;
       expect(bar.classList).toContain('toast-progress-decreasing');
       expect(bar.style.animationDuration).toBe('1000ms');
       await tick(999);
@@ -332,7 +332,7 @@ describe('Toast', () => {
         progressAnimation: 'increasing',
       });
       await render();
-      expect(toasts()[0].querySelector('.progress-bar')!.classList).toContain(
+      expect(toasts()[0].querySelector('[class*="toast-progress-"]')!.classList).toContain(
         'toast-progress-increasing',
       );
     });
@@ -347,13 +347,13 @@ describe('Toast', () => {
       const toast = toasts()[0];
       toast.dispatchEvent(new MouseEvent('mouseenter'));
       await render();
-      expect(toast.querySelector('.progress-bar')).toBeNull();
+      expect(toast.querySelector('[class*="toast-progress-"]')).toBeNull();
       await tick(5000);
       expect(toasts().length).toBe(1);
       toast.dispatchEvent(new MouseEvent('mouseleave'));
       await render();
       expect(
-        toast.querySelector<HTMLElement>('.progress-bar')!.style
+        toast.querySelector<HTMLElement>('[class*="toast-progress-"]')!.style
           .animationDuration,
       ).toBe('300ms');
       await tick(300);

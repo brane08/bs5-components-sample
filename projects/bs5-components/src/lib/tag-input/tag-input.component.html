@@ -11,7 +11,7 @@
               (focus)="selected.emit(item)" (keydown)="onChipKeydown($event, i)" (dragstart)="onDragStart($event, i)"
               (dragend)="onDragEnd()" (dragover)="onDragOver($event)" (drop)="onDrop($event, i)">
       @if (i === editingIndex()) {
-        <input #editInput class="border-0 p-0 bg-transparent text-reset" type="text"
+        <input #editInput class="form-control-plaintext w-auto py-0 border-0 text-reset" type="text"
                [size]="display(item).length || 1" [value]="display(item)" [attr.aria-label]="label(editTagText(), item)"
                (keydown)="onEditKeydown($event, i)" (blur)="commitEdit(i, editInput.value)"
                (click)="$event.stopPropagation()">
@@ -24,7 +24,7 @@
   }
   @if (showInput()) {
     <!-- size="1" lets the flex layout, not the input's default width, decide how wide it is. -->
-    <input #input class="ti-input flex-grow-1 border-0 p-0 bg-transparent text-body" type="text" size="1"
+    <input #input class="ti-input form-control-plaintext w-auto flex-grow-1 py-0 border-0" type="text" size="1"
            autocomplete="off" [class]="inputClass()" [id]="inputId() ?? id + '-input'"
            [attr.tabindex]="tabindex() ?? null" [attr.role]="hasAutocomplete() ? 'combobox' : null"
            [attr.aria-expanded]="hasAutocomplete() ? dropdownVisible() : null"

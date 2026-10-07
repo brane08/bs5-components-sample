@@ -32,10 +32,9 @@
 @if (config.progressBar && ref.hasTimer()) {
   <!-- Re-created on every timer cycle so the CSS animation restarts. -->
   @for (cycle of [ref.timerCycle()]; track cycle) {
-    <!-- Decorative: the remaining time is not announced. -->
-    <div class="progress rounded-0 bg-transparent" style="height: 4px" aria-hidden="true">
-      <div class="progress-bar bg-black bg-opacity-25" [class]="'toast-progress-' + config.progressAnimation"
-           [style.animation-duration.ms]="ref.timerDuration()"></div>
-    </div>
+    <!-- Decorative: the remaining time is not announced. A 4px top border whose width is animated (border utilities
+         instead of .progress, so no inline height is needed). -->
+    <div class="border-top border-4 border-black border-opacity-25" aria-hidden="true"
+         [class]="'toast-progress-' + config.progressAnimation" [style.animation-duration.ms]="ref.timerDuration()"></div>
   }
 }

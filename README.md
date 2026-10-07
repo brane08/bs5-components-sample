@@ -13,15 +13,20 @@ control works with template-driven (`ngModel`), reactive and Signal Forms (`[for
 ## Styling
 
 Templates use Bootstrap components and utility classes only, for example `.form-select`, `.dropdown-menu`, `.badge`,
-`.is-invalid`, `bg-body-tertiary`, and `.fade`/`.show`. Custom CSS is limited to what Bootstrap cannot express. Each
-rule is commented in its stylesheet:
+`.is-invalid`, `bg-body-tertiary`, and `.fade`/`.show`. Custom CSS is limited to what Bootstrap cannot express, and all
+of it lives in the single global stylesheet `bs5-components/styles`, where each rule is commented:
 
 | Rule | Why |
 |---|---|
 | `:focus-within` ring on the chip controls | Bootstrap styles `:focus` on the control itself, but here focus sits on an inner `<input>`. Values come from Bootstrap's Sass variables (`$input-focus-border-color`, `$input-focus-box-shadow`). |
 | `max-height` on the option / suggestion lists | Bootstrap has no max-height utility. |
 | Toast progress keyframes | Bootstrap has no timed progress animation. |
-| `.cdk-overlay-container` z-index (global, `bs5-components/styles`) | Puts `appendTo="body"` dropdowns at Bootstrap's `$zindex-popover`: above modals, below toasts. The CDK default would sit behind modals. |
+| `.cdk-overlay-container` z-index | Puts `appendTo="body"` dropdowns at Bootstrap's `$zindex-popover`: above modals, below toasts. The CDK default would sit behind modals. |
+
+Everything else is a Bootstrap class: chips are `.badge` with `fs-6 lh-base py-0` (body-sized text that fits the
+24px inner line of a `.form-control`, so controls stay exactly as tall as native ones) and a `.btn-close.small`;
+the inner inputs are `.form-control-plaintext`; the toast countdown is a `border-top border-4` bar. The only inline
+styles left are data-driven bindings (virtual-scroll row height, toast animation duration).
 
 Theme Bootstrap as usual (Sass variables or CSS custom properties) and the components follow.
 
@@ -47,8 +52,13 @@ import { MultiSelectComponent, TagInputComponent, ToastService, provideToastr } 
 
 ```scss
 @use "bootstrap/scss/bootstrap";
-@use "bs5-components/styles"; // one global rule: overlay stacking for appendTo="body"
+@use "bs5-components/styles"; // the only stylesheet for the toast, the select and the tag input
 ```
+
+Import it once, after Bootstrap. The components carry no styles of their own, so everything they need is in this one
+file (`styles/_select.scss`, `_tag-input.scss`, `_toast.scss` and `_overlay.scss` in the package) and you can read or
+theme it in one place. It uses Bootstrap's Sass variables, so the app needs Sass; without the import the components
+still work, but the focus ring, the list height cap, the toast countdown and the dropdown stacking are missing.
 
 Peer dependencies: Angular 21 (`core`, `common`, `forms`, `cdk`), Bootstrap 5.3 and RxJS 7. The selectors keep the
 `app-` prefix of the original sample.

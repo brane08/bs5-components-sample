@@ -1,6 +1,6 @@
-@use '../util/form-control';
+@use 'form-control';
 
-// Only rules Bootstrap classes cannot express; everything else is Bootstrap classes in the template.
+// <app-tag-input>: only rules Bootstrap classes cannot express; everything else is Bootstrap classes in the template.
 
 .ti-control {
   @include form-control.focus-within;

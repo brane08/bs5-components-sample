@@ -50,7 +50,6 @@ function normalize(text: string) {
 @Component({
   selector: 'app-multi-select',
   templateUrl: './multi-select.component.html',
-  styleUrls: ['./multi-select.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     NgTemplateOutlet, ChipComponent, CdkConnectedOverlay, CdkVirtualScrollViewport, CdkFixedSizeVirtualScroll,
