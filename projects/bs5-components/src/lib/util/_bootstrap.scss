@@ -1,8 +1,0 @@
-// Bootstrap's Sass API (variables, maps, mixins) for the few component rules that Bootstrap classes cannot express.
-// Produces no CSS. Bootstrap 5.3 is not Sass-module aware yet, so this bridge uses @import
-// (its deprecation is silenced in angular.json).
-@import "bootstrap/scss/functions";
-@import "bootstrap/scss/variables";
-@import "bootstrap/scss/variables-dark";
-@import "bootstrap/scss/maps";
-@import "bootstrap/scss/mixins";

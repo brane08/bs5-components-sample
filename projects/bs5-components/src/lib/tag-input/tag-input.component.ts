@@ -25,7 +25,6 @@ let nextId = 0;
 @Component({
   selector: 'app-tag-input',
   templateUrl: './tag-input.component.html',
-  styleUrls: ['./tag-input.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgTemplateOutlet, ChipComponent],
   host: { 'class': 'd-block position-relative' }

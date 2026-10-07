@@ -27,7 +27,7 @@
     </span>
   }
   <!-- size="1" lets the flex layout, not the input's default width, decide how wide it is. -->
-  <input #input class="ms-input border-0 p-0 bg-transparent text-body" type="text" size="1" role="combobox"
+  <input #input class="ms-input form-control-plaintext w-auto py-0 border-0" type="text" size="1" role="combobox"
          autocomplete="off" aria-autocomplete="list" aria-haspopup="listbox"
          [class.flex-grow-1]="multiple() || !hasValue() || !!searchTerm()"
          [id]="labelForId() ?? id + '-input'" [attr.aria-expanded]="isOpen()"

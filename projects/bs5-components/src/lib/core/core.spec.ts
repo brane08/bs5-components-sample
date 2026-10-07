@@ -38,7 +38,14 @@ describe('ChipComponent', () => {
     expect(chip.classList).toContain('text-bg-primary');
     expect(chip.getAttribute('tabindex')).toBe('-1');
     expect(chip.textContent!.trim()).toBe('Label');
+    // Body-sized text on the control's 24px line: no vertical padding; the remove button supplies the right padding.
+    for (const bootstrapClass of ['fs-6', 'lh-base', 'py-0', 'ps-2']) {
+      expect(chip.classList).toContain(bootstrapClass);
+    }
+    expect(chip.classList).not.toContain('pe-2');
     const button = chip.querySelector('button')!;
+    expect(button.classList).toContain('btn-close');
+    expect(button.classList).toContain('small');
     expect(button.getAttribute('aria-label')).toBe('Drop it');
     expect(button.getAttribute('data-bs-theme')).toBe('dark');
     const down = new MouseEvent('mousedown', {
@@ -54,6 +61,7 @@ describe('ChipComponent', () => {
     f.detectChanges();
     expect(chip.classList).toContain('text-bg-light');
     expect(chip.classList).not.toContain('text-bg-primary');
+    expect(chip.classList).toContain('pe-2');
     expect(chip.querySelector('button')).toBeNull();
   });
 });

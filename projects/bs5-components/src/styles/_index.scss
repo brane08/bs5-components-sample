@@ -1,14 +1,11 @@
-// Global styles of bs5-components. Add once, after Bootstrap: `@use "bs5-components/styles";`
-// Bootstrap 5.3 is not Sass-module aware yet, so its variables are loaded with @import (no CSS output).
-@import "bootstrap/scss/functions";
-@import "bootstrap/scss/variables";
-@import "bootstrap/scss/variables-dark";
-@import "bootstrap/scss/maps";
-@import "bootstrap/scss/mixins";
-
-// Dropdowns rendered in a CDK overlay (`<app-multi-select appendTo="body">`) must stack like Bootstrap popovers:
-// above modals ($zindex-modal) and below toasts ($zindex-toast). The CDK default (1000, declared inside its
-// `cdk-overlay` cascade layer) would put them behind an open modal. Bootstrap has no class for this element.
-.cdk-overlay-container {
-  z-index: $zindex-popover;
-}
+// Global styles of bs5-components: the only stylesheet the library needs, for the toast service, the select and the
+// tag input. Import it once, after Bootstrap:
+//
+//   @use "bootstrap/scss/bootstrap";
+//   @use "bs5-components/styles";
+//
+// Components carry no styles of their own (no view-encapsulated CSS), so everything is visible and themeable here.
+@forward 'select';
+@forward 'tag-input';
+@forward 'toast';
+@forward 'overlay';

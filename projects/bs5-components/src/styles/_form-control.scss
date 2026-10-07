@@ -15,9 +15,4 @@
     box-shadow: 0 0 bs.$input-btn-focus-blur bs.$input-focus-width
       rgba(var(--#{bs.$prefix}danger-rgb), bs.$input-btn-focus-color-opacity);
   }
-
-  // The container shows the focus ring, so the inner input must not draw its own outline.
-  input:focus {
-    outline: 0;
-  }
 }
